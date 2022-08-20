@@ -1,0 +1,17 @@
+{
+    "name": "EnhancedFramework.Physics3D",
+    "rootNamespace": "EnhancedFramework.Physics3D",
+    "references": [
+        "EnhancedEditor",
+        "EnhancedFramework.Settings"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

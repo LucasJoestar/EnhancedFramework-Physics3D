@@ -1,0 +1,19 @@
+{
+    "name": "EnhancedFramework.Movable3D",
+    "rootNamespace": "EnhancedFramework.Movable3D",
+    "references": [
+        "EnhancedEditor",
+        "EnhancedFramework.Core",
+        "EnhancedFramework.Physics3D",
+        "EnhancedFramework.Settings"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
