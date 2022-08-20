@@ -121,7 +121,7 @@ namespace EnhancedFramework.Movable3D {
 
         /// <summary>
         /// Informations used to calculate collisions.
-        /// <br/> Shared accross all objects for better performances.
+        /// <br/> Shared across all objects for better performances.
         /// </summary>
         public static readonly CollisionInfos Infos = new CollisionInfos();
 
