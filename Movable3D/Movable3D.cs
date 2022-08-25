@@ -117,7 +117,7 @@ namespace EnhancedFramework.Movable3D {
     /// Base class for every moving object of the game using complex velocity and collision detections.
     /// </summary>
     public class Movable3D : EnhancedBehaviour, IMovable3D, IMovableUpdate {
-        public override UpdateRegistration UpdateRegistration => base.UpdateRegistration | UpdateRegistration.Movable;
+        public override UpdateRegistration UpdateRegistration => base.UpdateRegistration | UpdateRegistration.Init | UpdateRegistration.Movable;
 
         #region Collision Settings
         /// <summary>
@@ -241,8 +241,8 @@ namespace EnhancedFramework.Movable3D {
         #endregion
 
         #region Enhanced Behaviour
-        protected override void Awake() {
-            base.Awake();
+        protected override void OnInit() {
+            base.OnInit();
 
             // Colliders initialization.
             collider.Initialize(CollisionMask);
