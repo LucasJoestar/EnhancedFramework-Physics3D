@@ -181,6 +181,7 @@ namespace EnhancedFramework.Movable3D {
         [Space(10f)]
 
         [SerializeField, Enhanced, Required] protected Movable3DAttributes attributes = null;
+        [SerializeField, Enhanced, ReadOnly] protected float speedVar = 0f;
 
         // -----------------------
 
@@ -241,6 +242,13 @@ namespace EnhancedFramework.Movable3D {
         #endregion
 
         #region Enhanced Behaviour
+        protected override void OnBehaviourEnabled() {
+            base.OnBehaviourEnabled();
+
+            collider.Collider.enabled = true;
+            triggerCollider.Collider.enabled = true;
+        }
+
         protected override void OnInit() {
             base.OnInit();
 
@@ -264,6 +272,9 @@ namespace EnhancedFramework.Movable3D {
             }
 
             ExitTriggers();
+
+            collider.Collider.enabled = false;
+            triggerCollider.Collider.enabled = false;
         }
 
         #if UNITY_EDITOR
@@ -383,25 +394,25 @@ namespace EnhancedFramework.Movable3D {
         public virtual void ResetSpeed() {
             CurveValue _speed = attributes.Speed;
 
-            if (_speed.CurrentTime == 0f) {
+            if (speedVar == 0f) {
                 return;
             }
 
-            Speed = _speed.Reset();
+            Speed = _speed.Reset(ref speedVar);
         }
 
         /// <summary>
         /// Decreases this object speed according to its curve.
         /// </summary>
         public virtual void DecreaseSpeed() {
-            Speed = attributes.Speed.Decrease(DeltaTime);
+            Speed = attributes.Speed.Decrease(ref speedVar, DeltaTime);
         }
 
         /// <summary>
         /// Set this object speed ratio according to its curve.
         /// </summary>
         public virtual void SetSpeedRatio(float _ratio) {
-            Speed = attributes.Speed.EvaluatePercent(_ratio);
+            Speed = attributes.Speed.EvaluatePercent(ref speedVar, _ratio);
         }
 
         /// <summary>
@@ -409,7 +420,7 @@ namespace EnhancedFramework.Movable3D {
         /// </summary>
         public float GetSpeedRatio() {
             CurveValue _speed = attributes.Speed;
-            return _speed.CurrentTime / _speed.Duration;
+            return _speed.GetCurrentTimeRatio(speedVar);
         }
 
         // -----------------------
@@ -424,7 +435,7 @@ namespace EnhancedFramework.Movable3D {
             Vector3 _movement = GetRelativeVector(Velocity.Movement);
 
             if (Mathm.AreEquals(_movement.x, _movement.z, 0f)) {
-                if (attributes.Speed.CurrentTime != 0f) {
+                if (speedVar != 0f) {
                     DecreaseSpeed();
                 }
 
@@ -444,7 +455,7 @@ namespace EnhancedFramework.Movable3D {
                 _increase *= attributes.AirSpeedAccelCoef;
             }
 
-            Speed = attributes.Speed.EvaluateContinue(_increase);
+            Speed = attributes.Speed.EvaluateContinue(ref speedVar, _increase);
         }
         #endregion
 
@@ -651,7 +662,7 @@ namespace EnhancedFramework.Movable3D {
         /// </summary>
         protected virtual void OnAppliedVelocity(FrameVelocity _velocity, CollisionInfos _infos) {
             // Moving state.
-            bool _isMoving = (!_velocity.Movement.IsNull() && ((_infos.AppliedVelocity - _velocity.Instant).sqrMagnitude > (_velocity.Movement.sqrMagnitude * .5f)));
+            bool _isMoving = IsObjectMoving(_velocity, _infos);
 
             if (IsMoving != _isMoving) {
                 OnSetMoving(_isMoving);
@@ -720,6 +731,13 @@ namespace EnhancedFramework.Movable3D {
         /// </summary>
         protected virtual void OnReachedMaxSpeed(bool _hasReachedMaxSpeed) {
             HasReachedMaxSpeed = _hasReachedMaxSpeed;
+        }
+
+        /// <summary>
+        /// Get if the object is currently moving.
+        /// </summary>
+        protected virtual bool IsObjectMoving(FrameVelocity _velocity, CollisionInfos _infos) {
+            return !_velocity.Movement.IsNull() && ((_infos.AppliedVelocity - _velocity.Instant).sqrMagnitude > (_velocity.Movement.sqrMagnitude * .5f));
         }
         #endregion
 

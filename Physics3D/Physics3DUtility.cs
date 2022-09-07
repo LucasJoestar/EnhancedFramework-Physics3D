@@ -28,7 +28,26 @@ namespace EnhancedFramework.Physics3D {
             }
         }
         #endregion
-        
+
+        #region Collider Comparer
+        /// <summary>
+        /// Comparer for <see cref="Collider"/> by distance.
+        /// </summary>
+        private class ColliderDistanceComparer : IComparer<Collider> {
+            private static readonly ColliderDistanceComparer comparer = new ColliderDistanceComparer();
+            private static Vector3 reference = Vector3.zero;
+
+            public static ColliderDistanceComparer GetComparer(Vector3 _reference) {
+                reference = _reference;
+                return comparer;
+            }
+
+            public int Compare(Collider _a, Collider _b) {
+                return (_a.transform.position - reference).sqrMagnitude.CompareTo((_b.transform.position - reference).sqrMagnitude);
+            }
+        }
+        #endregion
+
         #region Raycast Hit
         /// <summary>
         /// Sort an array of <see cref="RaycastHit"/> by their distance.
@@ -38,7 +57,16 @@ namespace EnhancedFramework.Physics3D {
             Array.Sort(_hits, 0, _amount, RaycastHitDistanceComparer.Default);
         }
         #endregion
-        
+
+        #region Collider
+        /// <summary>
+        /// Sort an array of <see cref="Collider"/> by their distance from a reference <see cref="Vector3"/>.
+        /// </summary>
+        public static void SortCollidersByDistance(Collider[] _colliders, int _amount, Vector3 _reference) {
+            Array.Sort(_colliders, 0, _amount, ColliderDistanceComparer.GetComparer(_reference));
+        }
+        #endregion
+
         #region Collision Mask
         /// <summary>
         /// Get the collision layer mask that indicates which layer(s) the specified <see cref="GameObject"/> can collide with.

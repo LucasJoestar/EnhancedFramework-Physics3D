@@ -62,10 +62,11 @@ namespace EnhancedFramework.Movable3D {
         #endregion
 
         #region Computing
-        /// <param name="_velocity"><inheritdoc cref="Movable3D.ComputeVelocity()" path="/returns"/></param>
+        /// <param name="_velocity">Actual velocity of the object</param>
+        /// <param name="_frameVelocity"><inheritdoc cref="Movable3D.ComputeVelocity()" path="/returns"/></param>
         /// <returns><inheritdoc cref="OnResetVelocity" path="/returns"/></returns>
         /// <inheritdoc cref="Movable3D.ComputeVelocity"/>
-        bool OnComputeVelocity(out FrameVelocity _velocity);
+        bool OnComputeVelocity(Velocity _velocity, out FrameVelocity _frameVelocity);
         #endregion
 
         #region Collision Callbacks
@@ -92,6 +93,10 @@ namespace EnhancedFramework.Movable3D {
         /// <inheritdoc cref="Movable3D.OnReachedMaxSpeed(bool)"/>
         /// <returns><inheritdoc cref="OnResetVelocity" path="/returns"/></returns>
         bool OnReachedMaxSpeed(bool _hasReachedMaxSpeed);
+
+        /// <inheritdoc cref="Movable3D.IsObjectMoving(FrameVelocity, CollisionInfos)"/>
+        /// <returns><inheritdoc cref="OnResetVelocity" path="/returns"/></returns>
+        bool IsMoving(FrameVelocity _velocity, CollisionInfos _infos, out bool _isMoving);
         #endregion
 
         #region Overlapping & Triggers
@@ -134,7 +139,7 @@ namespace EnhancedFramework.Movable3D {
         #region Global Members
         [Section("Controlled Movable 3D")]
 
-        [SerializeField] protected SerializedInterface<IMovable3DController> controller = null;
+        [SerializeField] protected SerializedInterface<IMovable3DController> controller = new SerializedInterface<IMovable3DController>();
 
         /// <summary>
         /// This movable controller instance.
@@ -202,8 +207,8 @@ namespace EnhancedFramework.Movable3D {
 
         #region Computing
         protected override FrameVelocity ComputeVelocity() {
-            if (!Controller.OnComputeVelocity(out FrameVelocity _velocity)) {
-                return _velocity;
+            if (!Controller.OnComputeVelocity(Velocity, out FrameVelocity _frameVelocity)) {
+                return _frameVelocity;
             }
 
             return base.ComputeVelocity();
@@ -245,6 +250,14 @@ namespace EnhancedFramework.Movable3D {
             if (Controller.OnReachedMaxSpeed(_hasReachedMaxSpeed)) {
                 base.OnReachedMaxSpeed(_hasReachedMaxSpeed);
             }
+        }
+
+        protected override bool IsObjectMoving(FrameVelocity _velocity, CollisionInfos _infos) {
+            if (Controller.IsMoving(_velocity, _infos, out bool _isMoving)) {
+                return _isMoving;
+            }
+
+            return base.IsObjectMoving(_velocity, _infos);
         }
         #endregion
 
