@@ -147,7 +147,7 @@ namespace EnhancedFramework.Physics3D {
         #endregion
 
         #region Cast
-        private static readonly RaycastHit[] castBuffer = new RaycastHit[8];
+        internal static readonly RaycastHit[] castBuffer = new RaycastHit[8];
 
         /// <summary>
         /// Get detailed hit informations from the last cast at a specific index.
@@ -158,6 +158,14 @@ namespace EnhancedFramework.Physics3D {
         /// <returns>Details informations about the hit at the specified index from the last cast.</returns>
         public static RaycastHit GetCastHit(int _index) {
             return castBuffer[_index];
+        }
+
+        /// <summary>
+        /// Sorts the hits detected using a <see cref="PhysicsCollider3D"/> cast by their distance.
+        /// </summary>
+        /// <inheritdoc cref="Physics3DUtility.SortRaycastHitByDistance(RaycastHit[], int)"/>
+        public static void SortCastHitByDistance(int _amount) {
+            Physics3DUtility.SortRaycastHitByDistance(castBuffer, _amount);
         }
 
         // -----------------------
@@ -305,7 +313,7 @@ namespace EnhancedFramework.Physics3D {
         #endregion
 
         #region Overlap
-        private static readonly Collider[] overlapBuffer = new Collider[16];
+        internal static readonly Collider[] overlapBuffer = new Collider[16];
 
         /// <summary>
         /// Get the collider at a specific index from the last overlap.
@@ -315,8 +323,16 @@ namespace EnhancedFramework.Physics3D {
         /// <param name="_index">Index at which to get the collider.
         /// <br/> Should be used in association with the amount from the overlap method.</param>
         /// <returns>The collider at the specified index from the last overlap.</returns>
-        public Collider GetOverlapCollider(int _index) {
+        public static Collider GetOverlapCollider(int _index) {
             return overlapBuffer[_index];
+        }
+
+        /// <summary>
+        /// Sorts the colliders detected using a <see cref="PhysicsCollider3D"/> overlap by their distance from a reference <see cref="Vector3"/>.
+        /// </summary>
+        /// <inheritdoc cref="Physics3DUtility.SortCollidersByDistance(Collider[], int, Vector3)"/>
+        public static void SortOverlapCollidersByDistance(int _amount, Vector3 _reference) {
+            Physics3DUtility.SortCollidersByDistance(overlapBuffer, _amount, _reference);
         }
 
         // -----------------------

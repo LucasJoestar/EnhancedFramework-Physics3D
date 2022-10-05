@@ -9,7 +9,10 @@ using EnhancedFramework.Core;
 using EnhancedFramework.Physics3D;
 using EnhancedFramework.Settings;
 using System;
+using System.Collections.Generic;
 using UnityEngine;
+
+using Range = EnhancedEditor.RangeAttribute;
 
 namespace EnhancedFramework.Movable3D {
     /// <summary>
@@ -48,6 +51,113 @@ namespace EnhancedFramework.Movable3D {
         /// <br/> Use this instead of setting <see cref="Transform.rotation"/>.
         /// </summary>
         void SetRotation(Quaternion _rotation);
+        #endregion
+    }
+
+    /// <summary>
+    /// Controller contract for a <see cref="Movable3D"/>.
+    /// <br/> Use this to receive various callbacks and override this object default behaviour.
+    /// <para/>
+    /// Should be set on Awake, as some operations are made on the Start callback.
+    /// </summary>
+    public interface IMovable3DController {
+        #region Collision Setup
+        /// <inheritdoc cref="Movable3D.CollisionType"/>
+        CollisionSystem3DType CollisionType { get; }
+
+        // -----------------------
+
+        /// <inheritdoc cref="Movable3D.GetColliderMask"/>
+        /// <returns>-1 to use the movable default collision mask implementation, otherwise the collision mask to be used.</returns>
+        int GetColliderMask(Collider _collider);
+
+        /// <returns><inheritdoc cref="GetColliderMask(Collider)" path="/returns"/></returns>
+        /// <inheritdoc cref="Movable3D.GetTriggerMask"/>
+        int GetTriggerMask(Collider _trigger);
+        #endregion
+
+        #region Velocity
+        /// <inheritdoc cref="Movable3D.ResetVelocity"/>
+        /// <returns>False to completely override this behaviour, true to continue execution and call the base definition.</returns>
+        bool OnResetVelocity();
+        #endregion
+
+        #region Speed
+        /// <returns><inheritdoc cref="OnResetVelocity" path="/returns"/></returns>
+        /// <inheritdoc cref="Movable3D.UpdateSpeed"/>
+        bool OnUpdateSpeed();
+
+        /// <returns><inheritdoc cref="OnResetVelocity" path="/returns"/></returns>
+        /// <inheritdoc cref="Movable3D.IncreaseSpeed"/>
+        bool OnIncreaseSpeed();
+
+        /// <inheritdoc cref="Movable3D.DecreaseSpeed()"/>
+        /// <returns><inheritdoc cref="OnResetVelocity" path="/returns"/></returns>
+        bool OnDecreaseSpeed();
+
+        /// <inheritdoc cref="Movable3D.ResetSpeed"/>
+        /// <returns><inheritdoc cref="OnResetVelocity" path="/returns"/></returns>
+        bool OnResetSpeed();
+        #endregion
+
+        #region Update
+        /// <inheritdoc cref="Movable3D.OnPreUpdate"/>
+        void OnPreUpdate();
+
+        /// <inheritdoc cref="Movable3D.OnPostUpdate"/>
+        void OnPostUpdate();
+        #endregion
+
+        #region Gravity
+        /// <inheritdoc cref="Movable3D.ApplyGravity"/>
+        /// <returns><inheritdoc cref="OnResetVelocity" path="/returns"/></returns>
+        bool OnApplyGravity();
+        #endregion
+
+        #region Computation
+        /// <returns><inheritdoc cref="OnResetVelocity" path="/returns"/></returns>
+        /// <inheritdoc cref="Movable3D.OnPreComputeVelocity"/>
+        bool OnPreComputeVelocity();
+
+        /// <param name="_velocity">Actual velocity of the object</param>
+        /// <param name="_frameVelocity"><inheritdoc cref="Movable3D.ComputeVelocity()" path="/returns"/></param>
+        /// <returns><inheritdoc cref="OnResetVelocity" path="/returns"/></returns>
+        /// <inheritdoc cref="Movable3D.ComputeVelocity"/>
+        bool OnComputeVelocity(Velocity _velocity, ref FrameVelocity _frameVelocity);
+
+        /// <returns><inheritdoc cref="OnResetVelocity" path="/returns"/></returns>
+        /// <inheritdoc cref="Movable3D.OnPostComputeVelocity"/>
+        bool OnPostComputeVelocity(ref FrameVelocity _frameVelocity);
+        #endregion
+
+        #region Collision Callback
+        /// <inheritdoc cref="Movable3D.SetGroundState(bool, RaycastHit)"/>
+        /// <returns><inheritdoc cref="OnResetVelocity" path="/returns"/></returns>
+        bool OnSetGroundState(ref bool _isGrounded, RaycastHit _hit);
+
+        /// <inheritdoc cref="Movable3D.OnAppliedVelocity(FrameVelocity, CollisionInfos)"/>
+        /// <returns><inheritdoc cref="OnResetVelocity" path="/returns"/></returns>
+        bool OnAppliedVelocity(ref FrameVelocity _velocity, CollisionInfos _infos);
+
+        /// <inheritdoc cref="Movable3D.OnRefreshedObject(FrameVelocity, CollisionInfos)"/>
+        /// <returns><inheritdoc cref="OnResetVelocity" path="/returns"/></returns>
+        bool OnRefreshedObject(ref FrameVelocity _velocity, CollisionInfos _infos);
+
+        /// <inheritdoc cref="Movable3D.OnSetGrounded(bool)"/>
+        /// <returns><inheritdoc cref="OnResetVelocity" path="/returns"/></returns>
+        bool OnSetGrounded(bool _isGrounded);
+        #endregion
+
+        #region Overlap and Trigger
+        /// <inheritdoc cref="Movable3D.OnExtractFromCollider(Collider, Vector3, float)"/>
+        /// <returns><inheritdoc cref="OnResetVelocity" path="/returns"/></returns>
+        bool OnExtractFromCollider(Collider _collider, Vector3 _direction, float _distance);
+
+        /// <inheritdoc cref="Movable3D.OnEnterTrigger(ITrigger3D)"/>
+        void OnEnterTrigger(ITrigger3D _trigger);
+
+        /// <inheritdoc cref="Movable3D.OnExitTrigger(ITrigger3D)"/>
+        void OnExitTrigger(ITrigger3D _trigger);
         #endregion
     }
 
@@ -116,57 +226,136 @@ namespace EnhancedFramework.Movable3D {
     /// <summary>
     /// Base class for every moving object of the game using complex velocity and collision detections.
     /// </summary>
+    [RequireComponent(typeof(Rigidbody))]
     public class Movable3D : EnhancedBehaviour, IMovable3D, IMovableUpdate {
+        /// <summary>
+        /// The default <see cref="IMovable3DController"/> used when no controller is specified (avoids null reference check).
+        /// </summary>
+        private class DefaultController : IMovable3DController {
+            #region Instance
+            /// <summary>
+            /// The static instance of this class.
+            /// </summary>
+            public static DefaultController Instance = new DefaultController();
+            #endregion
+
+            #region Controller
+            CollisionSystem3DType IMovable3DController.CollisionType {
+                get { return CollisionSystem3DType.Simple; }
+            }
+
+            int IMovable3DController.GetColliderMask(Collider _collider) {
+                return -1;
+            }
+
+            int IMovable3DController.GetTriggerMask(Collider _collider) {
+                return -1;
+            }
+
+            // -----------------------
+
+            bool IMovable3DController.OnResetVelocity() {
+                return true;
+            }
+
+            // -----------------------
+
+            bool IMovable3DController.OnUpdateSpeed() {
+                return true;
+            }
+
+            bool IMovable3DController.OnIncreaseSpeed() {
+                return true;
+            }
+
+            bool IMovable3DController.OnDecreaseSpeed() {
+                return true;
+            }
+
+            bool IMovable3DController.OnResetSpeed() {
+                return true;
+            }
+
+            // -----------------------
+
+            void IMovable3DController.OnPreUpdate() { }
+
+            void IMovable3DController.OnPostUpdate() { }
+
+            // -----------------------
+
+            bool IMovable3DController.OnApplyGravity() {
+                return true;
+            }
+
+            // -----------------------
+
+            bool IMovable3DController.OnPreComputeVelocity() {
+                return true;
+            }
+
+            bool IMovable3DController.OnComputeVelocity(Velocity _velocity, ref FrameVelocity _frameVelocity) {
+                return true;
+            }
+
+            bool IMovable3DController.OnPostComputeVelocity(ref FrameVelocity _frameVelocity) {
+                return true;
+            }
+
+            // -----------------------
+
+            bool IMovable3DController.OnAppliedVelocity(ref FrameVelocity _velocity, CollisionInfos _infos) {
+                return true;
+            }
+
+            bool IMovable3DController.OnRefreshedObject(ref FrameVelocity _velocity, CollisionInfos _infos) {
+                return true;
+            }
+
+            bool IMovable3DController.OnSetGrounded(bool _isGrounded) {
+                return true;
+            }
+
+            bool IMovable3DController.OnSetGroundState(ref bool _isGrounded, RaycastHit _hit) {
+                return true;
+            }
+
+            // -----------------------
+
+            bool IMovable3DController.OnExtractFromCollider(Collider _collider, Vector3 _direction, float _distance) {
+                return true;
+            }
+
+            void IMovable3DController.OnEnterTrigger(ITrigger3D _trigger) { }
+
+            void IMovable3DController.OnExitTrigger(ITrigger3D _trigger) { }
+            #endregion
+        }
+
         public override UpdateRegistration UpdateRegistration => base.UpdateRegistration | UpdateRegistration.Init | UpdateRegistration.Movable;
 
-        #region Collision Settings
-        /// <summary>
-        /// The type of collision system used to calculate
-        /// how this object moves in space.
-        /// </summary>
-        public virtual CollisionSystem3DType CollisionType {
-            get {
-                return CollisionSystem3DType.Simple;
-            }
-        }
-
-        /// <summary>
-        /// <see cref="LayerMask"/> to be used for object collision detections.
-        /// <br/> Uses the GameObject layer collision mask from <see cref="Physics"/> settings by default.
-        /// </summary>
-        public virtual int CollisionMask {
-            get {
-                return Physics3DUtility.GetLayerCollisionMask(gameObject);
-            } 
-        }
-
-        /// <summary>
-        /// <see cref="LayerMask"/> to be used for trigger detections.
-        /// <br/> Uses the GameObject layer collision mask from <see cref="Physics"/> settings by default.
-        /// </summary>
-        public virtual int TriggerMask {
-            get {
-                return Physics3DUtility.GetLayerCollisionMask(gameObject);
-            }
-        }
-        #endregion
-
         #region Global Members
-        [Section("Movable 3D")]
+        [Section("Movable")]
 
-        [SerializeField, Enhanced, Required] internal protected new Rigidbody rigidbody = null;
-        [SerializeField, Enhanced, Required] internal protected new Transform transform = null;
+        [SerializeField] protected SerializedInterface<IMovable3DController> controller = new SerializedInterface<IMovable3DController>();
+
+        [SerializeField, HideInInspector] internal protected new Rigidbody rigidbody = null;
+        [SerializeField, HideInInspector] internal protected new Transform transform = null;
 
         public Rigidbody Rigidbody {
-            get {
-                return rigidbody;
-            }
+            get { return rigidbody; }
         }
 
         public override Transform Transform {
-            get {
-                return transform;
-            }
+            get { return transform; }
+        }
+
+        /// <summary>
+        /// This movable controller instance.
+        /// </summary>
+        public IMovable3DController Controller {
+            get { return controller.Interface; }
+            set { controller.Interface = value; }
         }
 
         [Space(5f)]
@@ -178,62 +367,72 @@ namespace EnhancedFramework.Movable3D {
 
         [SerializeField] internal Collider[] ignoredColliders = new Collider[] { };
 
-        [Space(10f)]
-
-        [SerializeField, Enhanced, Required] protected Movable3DAttributes attributes = null;
-        [SerializeField, Enhanced, ReadOnly] protected float speedVar = 0f;
-
         // -----------------------
 
         [Space(5f), HorizontalLine(SuperColor.Green), Space(5f)]
+
+        [SerializeField] protected float gravityFactor = 1f;
+
+        [Space(5f)]
+
+        [SerializeField, Enhanced, Range(0f, 1f)] protected float groundOrientationFactor = 1f;
+
+        [Tooltip("The speed of this object orientation according to its ground normal, in quarter-circle per second.")]
+        [SerializeField, Enhanced, Range(0f, 100f)] protected float groundOrientationSpeed = 1f;
+
+        [Space(5f)]
+
+        [SerializeField] protected float speed = 1f;
+        [field: SerializeField, Enhanced, ReadOnly] public float VelocityCoef { get; protected set; } = 1f;
+
+        public float Speed {
+            get { return speed; }
+        }
+
+        // -----------------------
+
+        [Space(5f), HorizontalLine(SuperColor.Pumpkin), Space(5f)]
+
+        public bool UseGravity = true;
+
+        [field: SerializeField] public GravityMode GravityMode { get; protected set; } = GravityMode.World;
+        [field: SerializeField] public Vector3 GravitySense { get; protected set; } = Vector3.down;
+
+        [field: SerializeField, Enhanced, ReadOnly(true), Space(10f)] public bool IsGrounded { get; protected set; } = false;
+        [field: SerializeField, Enhanced, ReadOnly] public Vector3 GroundNormal { get; protected set; } = Vector3.up;
+
+        // -----------------------
+
+        [Space(5f), HorizontalLine(SuperColor.Purple), Space(5f)]
 
         public Velocity Velocity = new Velocity();
 
         [Space(5f)]
 
+        [SerializeField] protected bool debugVelocity = false;
+
         [Enhanced, HelpBox("Velocity equalization makes sure that when this object movement stops, its velocity is equalized based on the previous frame value " +
-                           "instead of continuing on the actual force value.", MessageType.Info)]
+                           "instead of continuing on the actual force value.", MessageType.Info, false)]
 
-        [SerializeField] protected bool doEqualizeVelocity = false;
-        [SerializeField] protected bool doDebugVelocity = false;
+        [SerializeField] protected bool equalizeVelocity = false;
 
-        [Space(10f)]
+        [Space(5f)]
 
+        [SerializeField, Enhanced, ReadOnly] protected FrameVelocity previousFrameVelocity = new FrameVelocity();
         [SerializeField, Enhanced, ReadOnly] protected Vector3 previousPosition = new Vector3();
-        [field: SerializeField, Enhanced, ReadOnly] public FrameVelocity PreviousFrameVelocity { get; protected set; } = new FrameVelocity();
 
-        // -----------------------
-
-        [Space(5f), HorizontalLine(SuperColor.Turquoise), Space(5f)]
-
-        public bool UseGravity = true;
-        [field:SerializeField] public GravityMode GravityMode   { get; protected set; } = GravityMode.World;
-        [field:SerializeField] public Vector3 GravitySense      { get; protected set; } = Vector3.down;
-
-        [field: SerializeField, Enhanced, ReadOnly(true), Space(10f)] public bool IsGrounded    { get; protected set; } = false;
-        [field: SerializeField, Enhanced, ReadOnly] public Vector3 GroundNormal                 { get; protected set; } = Vector3.up;
-
-        // -----------------------
-
-        [field:SerializeField, Enhanced, ReadOnly(true), Space(5f), HorizontalLine(SuperColor.Crimson), Space(5f)]
-
-        public bool IsMoving                                                            { get; protected set; } = false;
-        [field:SerializeField, Enhanced, ReadOnly(true)] public bool HasReachedMaxSpeed { get; protected set; } = false;
-        [field:SerializeField, Enhanced, ReadOnly] public float Speed                   { get; protected set; } = 1f;
-        [field:SerializeField, Enhanced, ReadOnly] public float VelocityCoef            { get; protected set; } = 1f;
-
-        // -----------------------
-
-        public float ClimbHeight {
-            get {
-                return attributes.ClimbHeight;
-            }
+        public FrameVelocity PreviousFrameVelocity {
+            get { return previousFrameVelocity; }
         }
 
-        public float SnapHeight {
-            get {
-                return attributes.SnapHeight;
-            }
+        // -----------------------
+
+        public virtual float ClimbHeight {
+            get { return PhysicsSettings.I.ClimbHeight; }
+        }
+
+        public virtual float SnapHeight {
+            get { return PhysicsSettings.I.SnapHeight; }
         }
 
         // -----------------------
@@ -252,9 +451,13 @@ namespace EnhancedFramework.Movable3D {
         protected override void OnInit() {
             base.OnInit();
 
-            // Colliders initialization.
-            collider.Initialize(CollisionMask);
-            triggerCollider.Initialize(TriggerMask);
+            // Initialization.
+            if (Controller == null) {
+                Controller = DefaultController.Instance;
+            }
+
+            collider.Initialize(GetColliderMask());
+            triggerCollider.Initialize(GetTriggerMask());
 
             rigidbody.isKinematic = true;
         }
@@ -262,15 +465,7 @@ namespace EnhancedFramework.Movable3D {
         protected override void OnBehaviourDisabled() {
             base.OnBehaviourDisabled();
 
-            // State update.
-            if (IsMoving) {
-                OnSetMoving(false);
-            }
-
-            if (HasReachedMaxSpeed) {
-                OnReachedMaxSpeed(false);
-            }
-
+            // Clear state and disable collisions.
             ExitTriggers();
 
             collider.Collider.enabled = false;
@@ -293,6 +488,63 @@ namespace EnhancedFramework.Movable3D {
             }
         }
         #endif
+        #endregion
+
+        #region Collision Setup
+        /// <summary>
+        /// The type of collision system used to calculate how this object moves in space.
+        /// </summary>
+        public virtual CollisionSystem3DType CollisionType {
+            get { return Controller.CollisionType; }
+        }
+
+        // -----------------------
+
+        /// <summary>
+        /// Get the default collision mask used for this object collider.
+        /// </summary>
+        public int GetColliderMask() {
+            Collider _collider = collider.Collider;
+            int _mask = Controller.GetColliderMask(_collider);
+
+            if (_mask != -1) {
+                return _mask;
+            }
+
+            return Physics3DUtility.GetLayerCollisionMask(_collider.gameObject);
+        }
+
+        /// <summary>
+        /// Get the default collision mask used for this object trigger.
+        /// </summary>
+        public int GetTriggerMask() {
+            Collider _collider = triggerCollider.Collider;
+            int _mask = Controller.GetTriggerMask(_collider);
+
+            if (_mask != -1) {
+                return _mask;
+            }
+
+            return Physics3DUtility.GetLayerCollisionMask(_collider.gameObject);
+        }
+
+        // -----------------------
+
+        /// <summary>
+        /// Override this object collider collision mask.
+        /// </summary>
+        /// <param name="_mask">New collider collision mask.</param>
+        public void SetColliderMask(int _mask) {
+            collider.CollisionMask = _mask;
+        }
+
+        /// <summary>
+        /// Override this object trigger collision mask.
+        /// </summary>
+        /// <param name="_mask">New trigger collision mask.</param>
+        public void SetTriggerMask(int _mask) {
+            triggerCollider.CollisionMask = _mask;
+        }
         #endregion
 
         #region Coefficient
@@ -380,82 +632,11 @@ namespace EnhancedFramework.Movable3D {
         /// Completely resets this object velocity back to zero.
         /// </summary>
         public virtual void ResetVelocity() {
-            ResetSpeed();
+            if (!Controller.OnResetVelocity()) {
+                return;
+            }
+
             Velocity.Reset();
-        }
-        #endregion
-
-        #region Speed
-        /// <summary>
-        /// Resets this object speed.
-        /// <para/>
-        /// Speed is the coefficient applied only to this object velocity movement.
-        /// </summary>
-        public virtual void ResetSpeed() {
-            CurveValue _speed = attributes.Speed;
-
-            if (speedVar == 0f) {
-                return;
-            }
-
-            Speed = _speed.Reset(ref speedVar);
-        }
-
-        /// <summary>
-        /// Decreases this object speed according to its curve.
-        /// </summary>
-        public virtual void DecreaseSpeed() {
-            Speed = attributes.Speed.Decrease(ref speedVar, DeltaTime);
-        }
-
-        /// <summary>
-        /// Set this object speed ratio according to its curve.
-        /// </summary>
-        public virtual void SetSpeedRatio(float _ratio) {
-            Speed = attributes.Speed.EvaluatePercent(ref speedVar, _ratio);
-        }
-
-        /// <summary>
-        /// Get this object speed ratio according to its curve.
-        /// </summary>
-        public float GetSpeedRatio() {
-            CurveValue _speed = attributes.Speed;
-            return _speed.GetCurrentTimeRatio(speedVar);
-        }
-
-        // -----------------------
-
-        /// <summary>
-        /// Called on update to know if this object speed should be increased.
-        /// <br/> Also used to reset the speed.
-        /// </summary>
-        /// <returns>True if this object speed should be increased, false otherwise.</returns>
-        protected virtual bool DoIncreaseSpeed() {
-            // Resets this object speed when not moving.
-            Vector3 _movement = GetRelativeVector(Velocity.Movement);
-
-            if (Mathm.AreEquals(_movement.x, _movement.z, 0f)) {
-                if (speedVar != 0f) {
-                    DecreaseSpeed();
-                }
-
-                return false;
-            }
-
-            return true;
-        }
-
-        private void UpdateSpeed() {
-            if (!DoIncreaseSpeed()) {
-                return;
-            }
-
-            float _increase = DeltaTime;
-            if (!IsGrounded) {
-                _increase *= attributes.AirSpeedAccelCoef;
-            }
-
-            Speed = attributes.Speed.EvaluateContinue(ref speedVar, _increase);
         }
         #endregion
 
@@ -463,7 +644,9 @@ namespace EnhancedFramework.Movable3D {
         /// <summary>
         /// Pre-movable update callback.
         /// </summary>
-        protected virtual void OnPreUpdate() { }
+        protected virtual void OnPreUpdate() {
+            Controller.OnPreUpdate();
+        }
 
         void IMovableUpdate.Update() {
             // Pre update callback.
@@ -479,8 +662,9 @@ namespace EnhancedFramework.Movable3D {
                 ApplyGravity();
             }
 
-            UpdateSpeed();
+            OnPreComputeVelocity();
             FrameVelocity _velocity = ComputeVelocity();
+            OnPostComputeVelocity(ref _velocity);
 
             // Collision calculs.
             CollisionInfos _infos = CollisionType.PerformCollisions(this, Velocity, _velocity, ignoredColliders);
@@ -499,10 +683,10 @@ namespace EnhancedFramework.Movable3D {
             OnRefreshedObject(_velocity, _infos);
 
             // Update previous velocity.
-            PreviousFrameVelocity = _velocity;
+            previousFrameVelocity = _velocity;
 
             // Debug.
-            if (doDebugVelocity) {
+            if (debugVelocity) {
                 this.LogWarning($"Velocity => M{_velocity.Movement} | F{_velocity.Force} | I{_velocity.Instant} | Final{_infos.AppliedVelocity}");
             }
 
@@ -513,7 +697,9 @@ namespace EnhancedFramework.Movable3D {
         /// <summary>
         /// Post-movable update callback.
         /// </summary>
-        protected virtual void OnPostUpdate() { }
+        protected virtual void OnPostUpdate() {
+            Controller.OnPostUpdate();
+        }
         #endregion
 
         #region Gravity
@@ -524,6 +710,10 @@ namespace EnhancedFramework.Movable3D {
         /// Use <see cref="AddGravity(float, float)"/> for a quick implementation.
         /// </summary>
         protected virtual void ApplyGravity() {
+            if (!Controller.OnApplyGravity()) {
+                return;
+            }
+
             AddGravity();
         }
 
@@ -538,7 +728,7 @@ namespace EnhancedFramework.Movable3D {
             float _vertical = GetRelativeVector(Velocity.Force, _rotation).y;
 
             if (_vertical > _maxGravity) {
-                _vertical = Mathf.Max(PhysicsSettings.I.Gravity * DeltaTime * _gravityCoef * attributes.GravityCoef, _maxGravity - _vertical);
+                _vertical = Mathf.Max(PhysicsSettings.I.Gravity * DeltaTime * _gravityCoef * gravityFactor, _maxGravity - _vertical);
                 AddForceVelocity(-GravitySense * _vertical);
             }
         }
@@ -555,12 +745,29 @@ namespace EnhancedFramework.Movable3D {
         }
         #endregion
 
-        #region Computations
+        #region Computation
+        /// <summary>
+        /// Called before computing this object frame velocity.
+        /// <br/> Used to perform various velocity-related operations,
+        /// like incrementing the object speed.
+        /// </summary>
+        protected virtual void OnPreComputeVelocity() {
+            if (!Controller.OnPreComputeVelocity()) {
+                return;
+            }
+        }
+
         /// <summary>
         /// Computes this object velocity just before its collision calculs.
         /// </summary>
         /// <returns>Velocity to be used for this frame.</returns>
         protected virtual FrameVelocity ComputeVelocity() {
+            FrameVelocity _velocity = new FrameVelocity();
+
+            if (!Controller.OnComputeVelocity(Velocity, ref _velocity)) {
+                return _velocity;
+            }
+
             // Get the movement and force velocity relatively to this object local space.
             // Do not use the GetRelativeVector & GetWorldVector methods,
             // prefering caching the transform rotation value for optimization purpose.
@@ -579,7 +786,7 @@ namespace EnhancedFramework.Movable3D {
             }
 
             // Compute movement and force flat velocity.
-            Vector3 _flatMovement = _movement.Flat() * Speed;
+            Vector3 _flatMovement = _movement.Flat() * speed;
             Vector3 _flatForce = _force.Flat();
 
             _movement = Vector3.MoveTowards(_flatMovement, _flatMovement.PerpendicularSurface(_flatForce), _flatForce.magnitude * _delta).SetY(_movement.y);
@@ -587,9 +794,9 @@ namespace EnhancedFramework.Movable3D {
 
             // When movement is added to the opposite force direction, the resulting velocity is the addition of both.
             // But when this opposite movement is stopped, we need to resume the velocity where it previously was.
-            if (doEqualizeVelocity) {
-                Vector3 _previousMovement = GetRelativeVector(PreviousFrameVelocity.Movement, PreviousFrameVelocity.Rotation).SetY(0f);
-                Vector3 _previousForce = GetRelativeVector(PreviousFrameVelocity.Force, PreviousFrameVelocity.Rotation).SetY(0f);
+            if (equalizeVelocity) {
+                Vector3 _previousMovement = GetRelativeVector(previousFrameVelocity.Movement, previousFrameVelocity.Rotation).SetY(0f);
+                Vector3 _previousForce = GetRelativeVector(previousFrameVelocity.Force, previousFrameVelocity.Rotation).SetY(0f);
 
                 if (_flatMovement.IsNull() && !_previousMovement.IsNull() && !_previousForce.IsNull()) {
                     _force = (_previousMovement + _previousForce) + (_force - _previousForce);
@@ -600,7 +807,7 @@ namespace EnhancedFramework.Movable3D {
             _delta *= VelocityCoef;
             _movement = GetWorldVector(_movement, _rotation);
 
-            FrameVelocity _velocity = new FrameVelocity() {
+            _velocity = new FrameVelocity() {
                 Movement = _movement * _delta,
                 Force = GetWorldVector(_force, _rotation) * _delta,
                 Instant = Velocity.Instant,
@@ -622,12 +829,76 @@ namespace EnhancedFramework.Movable3D {
 
             return _velocity;
         }
+
+        /// <summary>
+        /// Called after computing this object frame velocity.
+        /// <br/> Use this to perform additional operations.
+        /// </summary>
+        /// <param name="_velocity"></param>
+        protected virtual void OnPostComputeVelocity(ref FrameVelocity _velocity) {
+            if (!Controller.OnPostComputeVelocity(ref _velocity)) {
+                return;
+            }
+        }
         #endregion
 
-        #region Collision Callbacks
+        #region Collision Callback
         private const float DynamicGravityDetectionDistance = 15f;
 
         // -----------------------
+
+        /// <summary>
+        /// Called just after velocity has been applied on this object, but before extracting the object from overlapping colliders.
+        /// </summary>
+        protected virtual void OnAppliedVelocity(FrameVelocity _velocity, CollisionInfos _infos) {
+            if (!Controller.OnAppliedVelocity(ref _velocity, _infos)) {
+                return;
+            }
+
+            // Rotation according to the ground normal.
+            Vector3 _up = IsGrounded
+                        ? GroundNormal
+                        : -GravitySense;
+
+            Quaternion _from = transform.rotation;
+            Quaternion _to = Quaternion.LookRotation(transform.forward, Vector3.Lerp(Vector3.up, _up, groundOrientationFactor));
+
+            if (_from != _to) {
+                _to = Quaternion.RotateTowards(_from, _to, groundOrientationSpeed * DeltaTime * 90f);
+                SetRotation(_to);
+            }
+        }
+
+        /// <summary>
+        /// Called at the end of the update, and after all velocity calculs and overlap extraction operations have been performed.
+        /// </summary>
+        protected virtual void OnRefreshedObject(FrameVelocity _velocity, CollisionInfos _infos) {
+            if (!Controller.OnRefreshedObject(ref _velocity, _infos)) {
+                return;
+            }
+        }
+
+        /// <summary>
+        /// Called when this object ground state has changed.
+        /// </summary>
+        protected virtual void OnSetGrounded(bool _isGrounded) {
+            if (!Controller.OnSetGrounded(_isGrounded)) {
+                return;
+            }
+
+            IsGrounded = _isGrounded;
+
+            // Dampen force velocity when getting grounded.
+            if (_isGrounded && !Velocity.Force.IsNull()) {
+                Quaternion _rotation = transform.rotation;
+                Vector3 _force = GetRelativeVector(Velocity.Force, _rotation);
+
+                _force.y = 0f;
+                _force *= PhysicsSettings.I.OnGroundedForceMultiplier;
+
+                Velocity.Force = GetWorldVector(_force, _rotation);
+            }
+        }
 
         /// <summary>
         /// Set this object ground state, from collision results.
@@ -635,6 +906,10 @@ namespace EnhancedFramework.Movable3D {
         /// <param name="_isGrounded">Is the object grounded at the end of the collisions.</param>
         /// <param name="_hit">Collision ground hit (default is not grounded).</param>
         internal protected virtual void SetGroundState(bool _isGrounded, RaycastHit _hit) {
+            if (!Controller.OnSetGroundState(ref _isGrounded, _hit)) {
+                return;
+            }
+
             // Changed ground state callback.
             if (IsGrounded != _isGrounded) {
                 OnSetGrounded(_isGrounded);
@@ -656,93 +931,11 @@ namespace EnhancedFramework.Movable3D {
                 GravitySense = -_hit.normal;
             }
         }
-
-        /// <summary>
-        /// Called just after velocity has been applied on this object, but before extracting the object from overlapping colliders.
-        /// </summary>
-        protected virtual void OnAppliedVelocity(FrameVelocity _velocity, CollisionInfos _infos) {
-            // Moving state.
-            bool _isMoving = IsObjectMoving(_velocity, _infos);
-
-            if (IsMoving != _isMoving) {
-                OnSetMoving(_isMoving);
-            }
-
-            // Max speed state.
-            bool _hasReachedMaxSpeed = GetSpeedRatio() == 1f;
-
-            if (HasReachedMaxSpeed != _hasReachedMaxSpeed) {
-                OnReachedMaxSpeed(_hasReachedMaxSpeed);
-            }
-
-            // Rotation according to ground normal.
-            Vector3 _up = IsGrounded
-                        ? GroundNormal
-                        : -GravitySense;
-
-            _up = Vector3.Lerp(Vector3.up, _up, attributes.GroundSurfaceRotationCoef);
-
-            Quaternion _from = transform.rotation;
-            Quaternion _to = Quaternion.LookRotation(transform.forward, _up);
-
-            if (_from != _to) {
-                _to = Quaternion.RotateTowards(_from, _to, DeltaTime * attributes.GroundSurfaceRotationSpeed * 100f);
-                SetRotation(_to);
-            }
-        }
-
-        /// <summary>
-        /// Called at the end of the update, and after all velocity calculs and overlap extraction operations have been performed.
-        /// </summary>
-        protected virtual void OnRefreshedObject(FrameVelocity _velocity, CollisionInfos _infos) { }
-
-        /// <summary>
-        /// Called when this object ground state has changed.
-        /// </summary>
-        protected virtual void OnSetGrounded(bool _isGrounded) {
-            IsGrounded = _isGrounded;
-
-            // Dampen force velocity when getting grounded.
-            if (_isGrounded && !Velocity.Force.IsNull()) {
-                Quaternion _rotation = transform.rotation;
-                Vector3 _force = GetRelativeVector(Velocity.Force, _rotation);
-
-                _force.y = 0f;
-                _force *= PhysicsSettings.I.OnGroundedForceMultiplier;
-
-                Velocity.Force = GetWorldVector(_force, _rotation);
-            }
-        }
-
-        /// <summary>
-        /// Called when this object moving state has changed.
-        /// </summary>
-        protected virtual void OnSetMoving(bool _isMoving) {
-            IsMoving = _isMoving;
-
-            // Speed reset.
-            if (!_isMoving) {
-                //ResetSpeed();
-            }
-        }
-
-        /// <summary>
-        /// Called when this object has reached or lost its max speed.
-        /// </summary>
-        protected virtual void OnReachedMaxSpeed(bool _hasReachedMaxSpeed) {
-            HasReachedMaxSpeed = _hasReachedMaxSpeed;
-        }
-
-        /// <summary>
-        /// Get if the object is currently moving.
-        /// </summary>
-        protected virtual bool IsObjectMoving(FrameVelocity _velocity, CollisionInfos _infos) {
-            return !_velocity.Movement.IsNull() && ((_infos.AppliedVelocity - _velocity.Instant).sqrMagnitude > (_velocity.Movement.sqrMagnitude * .5f));
-        }
         #endregion
 
-        #region Overlapping & Triggers
-        protected readonly Stamp<Trigger3D> overlappingTriggers = new Stamp<Trigger3D>(2);
+        #region Overlap and Trigger
+        private static readonly List<ITrigger3D> triggerBuffer = new List<ITrigger3D>();
+        protected readonly List<ITrigger3D> overlappingTriggers = new List<ITrigger3D>();
 
         // -----------------------
 
@@ -752,15 +945,18 @@ namespace EnhancedFramework.Movable3D {
         public void RefreshPosition() {
             // Triggers.
             int _amount = OverlapTriggers();
+            triggerBuffer.Clear();
 
             for (int i = 0; i < _amount; i++) {
                 Collider _overlap = GetOverlapTrigger(i);
 
-                if (_overlap.isTrigger && _overlap.TryGetComponent(out Trigger3D _trigger)) {
+                if (_overlap.isTrigger && _overlap.TryGetComponent(out ITrigger3D _trigger)) {
+                    triggerBuffer.Add(_trigger);
+
                     // Trigger enter.
                     if (HasEnteredTrigger(_trigger)) {
-                        OnEnterTrigger(_trigger);
                         overlappingTriggers.Add(_trigger);
+                        OnEnterTrigger(_trigger);
                     }
                 }
             }
@@ -775,7 +971,7 @@ namespace EnhancedFramework.Movable3D {
                                                _overlap, _overlap.transform.position, _overlap.transform.rotation,
                                                out Vector3 _direction, out float _distance)) {
                     // Collider extraction.
-                    OnExtractCollider(_overlap, _direction, _distance);
+                    OnExtractFromCollider(_overlap, _direction, _distance);
                 }
             }
 
@@ -783,19 +979,19 @@ namespace EnhancedFramework.Movable3D {
 
             // Exit from no-more detected triggers.
             for (int i = overlappingTriggers.Count; i-- > 0;) {
-                Trigger3D _trigger = overlappingTriggers[i];
+                ITrigger3D _trigger = overlappingTriggers[i];
 
                 if (HasExitedTrigger(_trigger)) {
-                    OnExitTrigger(_trigger);
                     overlappingTriggers.RemoveAt(i);
+                    OnExitTrigger(_trigger);
                 }
             }
 
             // ----- Local Methods ----- \\
 
-            bool HasEnteredTrigger(Trigger3D _trigger) {
+            bool HasEnteredTrigger(ITrigger3D _trigger) {
                 for (int i = 0; i < overlappingTriggers.Count; i++) {
-                    Trigger3D _other = overlappingTriggers[i];
+                    ITrigger3D _other = overlappingTriggers[i];
 
                     if (_trigger == _other)
                         return false;
@@ -804,9 +1000,9 @@ namespace EnhancedFramework.Movable3D {
                 return true;
             }
 
-            bool HasExitedTrigger(Trigger3D _trigger) {
-                for (int i = 0; i < overlappingTriggers.Count; i++) {
-                    Trigger3D _other = overlappingTriggers[i];
+            bool HasExitedTrigger(ITrigger3D _trigger) {
+                for (int i = 0; i < triggerBuffer.Count; i++) {
+                    ITrigger3D _other = triggerBuffer[i];
 
                     if (_trigger == _other)
                         return false;
@@ -827,11 +1023,11 @@ namespace EnhancedFramework.Movable3D {
         }
 
         public Collider GetOverlapCollider(int _index) {
-            return collider.GetOverlapCollider(_index);
+            return PhysicsCollider3D.GetOverlapCollider(_index);
         }
 
         public Collider GetOverlapTrigger(int _index) {
-            return triggerCollider.GetOverlapCollider(_index);
+            return PhysicsCollider3D.GetOverlapCollider(_index);
         }
 
         // -----------------------
@@ -847,15 +1043,32 @@ namespace EnhancedFramework.Movable3D {
             overlappingTriggers.Clear();
         }
 
-        protected virtual void OnEnterTrigger(Trigger3D _trigger) {
+        /// <summary>
+        /// Called when this objects enters a new trigger.
+        /// </summary>
+        /// <param name="_trigger">The <see cref="ITrigger3D"/> this object entered.</param>
+        protected virtual void OnEnterTrigger(ITrigger3D _trigger) {
             _trigger.OnEnterTrigger(this);
+            Controller.OnEnterTrigger(_trigger);
         }
 
-        protected virtual void OnExitTrigger(Trigger3D _trigger) {
+        /// <summary>
+        /// Called when this objects exits a trigger.
+        /// </summary>
+        /// <param name="_trigger">The <see cref="ITrigger3D"/> this object exited.</param>
+        protected virtual void OnExitTrigger(ITrigger3D _trigger) {
             _trigger.OnExitTrigger(this);
+            Controller.OnExitTrigger(_trigger);
         }
 
-        protected virtual void OnExtractCollider(Collider _collider, Vector3 _direction, float _distance) {
+        /// <summary>
+        /// Called when this objects is extracting from a collider.
+        /// </summary>
+        protected virtual void OnExtractFromCollider(Collider _collider, Vector3 _direction, float _distance) {
+            if (!Controller.OnExtractFromCollider(_collider, _direction, _distance)) {
+                return;
+            }
+
             Vector3 _position = rigidbody.position + (_direction * _distance);
             SetPosition(_position);
         }
@@ -866,7 +1079,7 @@ namespace EnhancedFramework.Movable3D {
         /// Sets this object position.
         /// <br/> Use this instead of setting <see cref="Transform.position"/>.
         /// </summary>
-        public void SetPosition(Vector3 _position) {
+        public virtual void SetPosition(Vector3 _position) {
             rigidbody.position = _position;
             transform.position = _position;
 
@@ -877,7 +1090,7 @@ namespace EnhancedFramework.Movable3D {
         /// Sets this object rotation.
         /// <br/> Use this instead of setting <see cref="Transform.rotation"/>.
         /// </summary>
-        public void SetRotation(Quaternion _rotation) {
+        public virtual void SetRotation(Quaternion _rotation) {
             rigidbody.rotation = _rotation;
             transform.rotation = _rotation;
 
@@ -891,6 +1104,22 @@ namespace EnhancedFramework.Movable3D {
         public void SetPositionAndRotation(Vector3 _position, Quaternion _rotation) {
             SetPosition(_position);
             SetRotation(_rotation);
+        }
+
+        /// <inheritdoc cref="SetPositionAndRotation(Vector3, Quaternion)"/>
+        public void SetPositionAndRotation(Transform _transform, bool _useLocal = false) {
+            Vector3 _position;
+            Quaternion _rotation;
+
+            if (_useLocal) {
+                _position = _transform.localPosition;
+                _rotation = _transform.localRotation;
+            } else {
+                _position = _transform.position;
+                _rotation = _transform.rotation;
+            }
+
+            SetPositionAndRotation(_position, _rotation);
         }
 
         // -----------------------
@@ -915,7 +1144,7 @@ namespace EnhancedFramework.Movable3D {
 
         [Button(ActivationMode.Play, SuperColor.Raspberry, IsDrawnOnTop = false)]
         #pragma warning disable IDE0051
-        private void SetTransformValues(Transform transform, bool usePosition = true, bool useRotation = true) {
+        protected void SetTransformValues(Transform transform, bool usePosition = true, bool useRotation = true) {
             if (usePosition) {
                 SetPosition(transform.position);
             }
@@ -923,24 +1152,6 @@ namespace EnhancedFramework.Movable3D {
             if (useRotation) {
                 SetRotation(transform.rotation);
             }
-        }
-        #endregion
-
-        #region Collision Masks
-        /// <summary>
-        /// Override this object collider collision mask.
-        /// </summary>
-        /// <param name="_mask">New collider collision mask.</param>
-        public void SetColliderMask(int _mask) {
-            collider.CollisionMask = _mask;
-        }
-
-        /// <summary>
-        /// Override this object trigger collision mask.
-        /// </summary>
-        /// <param name="_mask">New trigger collision mask.</param>
-        public void SetTriggerMask(int _mask) {
-            triggerCollider.CollisionMask = _mask;
         }
         #endregion
     }
