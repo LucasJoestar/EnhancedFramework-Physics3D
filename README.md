@@ -3,7 +3,7 @@
 This repository is part of the "Enhanced Engine", an advanced collection of systems for the [Unity](https://unity.com/) game engine.
 
 
-The Enhanced Framework - Physics 3D features a new framework for manipualting objects using the 3D Physics API. <br/>
+The "Enhanced Framework - Physics 3D" features a new framework for manipualting objects using the 3D Physics API. <br/>
 
 ### WARNING - Enhanced Editor & Enhanced Framework required
 This library requires you to first install the first two parts of the Enhanced Engine, which you can find [here](https://github.com/LucasJoestar/EnhancedEditor/) and [here](https://github.com/LucasJoestar/EnhancedFramework/).
