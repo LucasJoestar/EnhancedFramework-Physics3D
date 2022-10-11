@@ -315,18 +315,6 @@ namespace EnhancedFramework.Movable3D {
         public void SetPath(Vector3[] _path, Action<bool, Movable3D> _onComplete = null) {
             path.SetPath(_path, _onComplete);
         }
-
-        // -----------------------
-
-        [Button]
-        public void SetPath(Transform _position) {
-            SetPath(_position.position);
-        }
-
-        [Button]
-        public void SetPath(Transform _first, Transform _second, Transform _third) {
-            SetPath(new Vector3[] { _first.position, _second.position, _third.position });
-        }
         #endregion
 
         #region Orientation

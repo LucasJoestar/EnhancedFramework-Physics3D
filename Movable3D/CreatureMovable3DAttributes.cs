@@ -4,11 +4,14 @@
 //
 // ============================================================================================ //
 
-using DG.Tweening;
 using EnhancedEditor;
 using EnhancedFramework.Core;
 using EnhancedFramework.Settings;
 using UnityEngine;
+
+#if DOTWEEN_ENABLED
+using DG.Tweening;
+#endif
 
 using Range = EnhancedEditor.RangeAttribute;
 
@@ -29,7 +32,11 @@ namespace EnhancedFramework.Movable3D {
 		[Space(10f)]
 
 		[Tooltip("The speed of the creature rotation, in quarter circle/second.")]
+		#if DOTWEEN_ENABLED
 		public EaseValue TurnSpeed = new EaseValue(new Vector2(0f, 1f), 1f, Ease.InOutSine);
+		#else
+		public CurveValue TurnSpeed = new CurveValue(new Vector2(0f, 1f), 1f, AnimationCurve.EaseInOut(0f, 0f, 1f, 1f));
+		#endif
 
 		[Space(10f), HorizontalLine(SuperColor.Grey, 1f), Space(10f)]
 
