@@ -1,4 +1,4 @@
-# Enhanced Framwork - Physics 3D - Enhanced Engine, Part III
+# Enhanced Framework - Physics 3D - Enhanced Engine, Part III
 
 This repository is part of the "Enhanced Engine", an advanced collection of systems for the [Unity](https://unity.com/) game engine.
 
