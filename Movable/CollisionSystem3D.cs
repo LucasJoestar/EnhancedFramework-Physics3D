@@ -6,10 +6,9 @@
 
 using System;
 using EnhancedFramework.Core;
-using EnhancedFramework.Physics3D;
 using UnityEngine;
 
-namespace EnhancedFramework.Movable3D {
+namespace EnhancedFramework.Physics3D {
     /// <summary>
     /// <see cref="CollisionSystem3D"/>-related enum used to determine an object collision calculs.
     /// </summary>
@@ -64,7 +63,7 @@ namespace EnhancedFramework.Movable3D {
         /// <summary>
         /// Buffer of all collision hits encountered during calculs.
         /// </summary>
-        public readonly Stamp<RaycastHit> HitBuffer = new Stamp<RaycastHit>(3);
+        public readonly EnhancedCollection<RaycastHit> HitBuffer = new EnhancedCollection<RaycastHit>(3);
 
         public Vector3 OriginalVelocity = Vector3.zero;
         public Vector3 DynamicVelocity  = Vector3.zero;

@@ -6,7 +6,6 @@
 
 using EnhancedEditor;
 using EnhancedFramework.Core;
-using EnhancedFramework.Settings;
 using UnityEngine;
 
 #if DOTWEEN_ENABLED
@@ -15,7 +14,7 @@ using DG.Tweening;
 
 using Range = EnhancedEditor.RangeAttribute;
 
-namespace EnhancedFramework.Movable3D {
+namespace EnhancedFramework.Physics3D {
 	/// <summary>
 	/// <see cref="CreatureMovable3D"/> instance associated configurable attributes.
 	/// </summary>
@@ -51,7 +50,7 @@ namespace EnhancedFramework.Movable3D {
             get {
 				return OverrideCollisionSettings
 					 ? climbHeight
-					 : PhysicsSettings.I.ClimbHeight;
+					 : Physics3DSettings.I.ClimbHeight;
             }
         }
 
@@ -59,7 +58,7 @@ namespace EnhancedFramework.Movable3D {
 			get {
 				return OverrideCollisionSettings
 					 ? snapHeight
-					 : PhysicsSettings.I.SnapHeight;
+					 : Physics3DSettings.I.SnapHeight;
 			}
 		}
 		#endregion

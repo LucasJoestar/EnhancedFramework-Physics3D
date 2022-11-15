@@ -10,7 +10,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace EnhancedFramework.Movable3D {
+namespace EnhancedFramework.Physics3D {
     /// <summary>
     /// <see cref="CreatureMovable3D"/>-related path wrapper class.
     /// </summary>

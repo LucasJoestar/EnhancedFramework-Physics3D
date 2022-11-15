@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using EnhancedFramework.Settings;
 
 namespace EnhancedFramework.Physics3D {
     /// <summary>
@@ -18,12 +17,10 @@ namespace EnhancedFramework.Physics3D {
         /// <summary>
         /// Comparer for <see cref="RaycastHit"/> by distance.
         /// </summary>
-        private class RaycastHitDistanceComparer : IComparer<RaycastHit>
-        {
+        private class RaycastHitDistanceComparer : IComparer<RaycastHit> {
             public static readonly RaycastHitDistanceComparer Default = new RaycastHitDistanceComparer();
 
-            public int Compare(RaycastHit _a, RaycastHit _b)
-            {
+            public int Compare(RaycastHit _a, RaycastHit _b) {
                 return _a.distance.CompareTo(_b.distance);
             }
         }
@@ -52,8 +49,7 @@ namespace EnhancedFramework.Physics3D {
         /// <summary>
         /// Sort an array of <see cref="RaycastHit"/> by their distance.
         /// </summary>
-        public static void SortRaycastHitByDistance(RaycastHit[] _hits, int _amount)
-        {
+        public static void SortRaycastHitByDistance(RaycastHit[] _hits, int _amount) {
             Array.Sort(_hits, 0, _amount, RaycastHitDistanceComparer.Default);
         }
         #endregion
@@ -71,9 +67,8 @@ namespace EnhancedFramework.Physics3D {
         /// <summary>
         /// Get the collision layer mask that indicates which layer(s) the specified <see cref="GameObject"/> can collide with.
         /// </summary>
-        /// <param name="gameObject">The <see cref="GameObject"/> to retrieve the collision layer mask for.</param>
-        public static int GetLayerCollisionMask(GameObject _gameObject)
-        {
+        /// <param name="_gameObject">The <see cref="GameObject"/> to retrieve the collision layer mask for.</param>
+        public static int GetLayerCollisionMask(GameObject _gameObject) {
             int _layer = _gameObject.layer;
             return GetLayerCollisionMask(_layer);
         }
@@ -81,12 +76,10 @@ namespace EnhancedFramework.Physics3D {
         /// <summary>
         /// Get the collision layer mask that indicates which layer(s) the specified layer can collide with.
         /// </summary>
-        /// <param name="layer">The layer to retrieve the collision layer mask for.</param>
-        public static int GetLayerCollisionMask(int _layer)
-        {
+        /// <param name="_layer">The layer to retrieve the collision layer mask for.</param>
+        public static int GetLayerCollisionMask(int _layer) {
             int _layerMask = 0;
-            for (int i = 0; i < 32; i++)
-            {
+            for (int i = 0; i < 32; i++) {
                 if (!Physics.GetIgnoreLayerCollision(_layer, i))
                     _layerMask |= 1 << i;
             }
@@ -110,7 +103,7 @@ namespace EnhancedFramework.Physics3D {
         /// <param name="_up">Referential up vector of the object to stand on the surface.</param>
         public static bool IsGroundSurface(Collider _collider, Vector3 _normal, Vector3 _up) {
             float _angle = Vector3.Angle(_normal, _up);
-            return (_angle <= PhysicsSettings.I.GroundAngle) && !_collider.TryGetComponent<NonGroundSurface3D>(out _);
+            return (_angle <= Physics3DSettings.I.GroundAngle) && !_collider.TryGetComponent<NonGroundSurface3D>(out _);
         }
         #endregion
     }

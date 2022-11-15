@@ -6,15 +6,13 @@
 
 using EnhancedEditor;
 using EnhancedFramework.Core;
-using EnhancedFramework.Physics3D;
-using EnhancedFramework.Settings;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 using Range = EnhancedEditor.RangeAttribute;
 
-namespace EnhancedFramework.Movable3D {
+namespace EnhancedFramework.Physics3D {
     /// <summary>
     /// Object-related gravity mode.
     /// <para/>
@@ -428,11 +426,11 @@ namespace EnhancedFramework.Movable3D {
         // -----------------------
 
         public virtual float ClimbHeight {
-            get { return PhysicsSettings.I.ClimbHeight; }
+            get { return Physics3DSettings.I.ClimbHeight; }
         }
 
         public virtual float SnapHeight {
-            get { return PhysicsSettings.I.SnapHeight; }
+            get { return Physics3DSettings.I.SnapHeight; }
         }
 
         // -----------------------
@@ -548,7 +546,7 @@ namespace EnhancedFramework.Movable3D {
         #endregion
 
         #region Coefficient
-        private readonly Stamp<float> velocityCoefBuffer = new Stamp<float>(1);
+        private readonly EnhancedCollection<float> velocityCoefBuffer = new EnhancedCollection<float>(1);
 
         // -----------------------
 
@@ -722,13 +720,13 @@ namespace EnhancedFramework.Movable3D {
         /// <br/> Uses game standard gravity.
         /// </summary>
         public void AddGravity(float _gravityCoef = 1f, float _maxGravityCoef = 1f) {
-            float _maxGravity = PhysicsSettings.I.MaxGravity * _maxGravityCoef;
+            float _maxGravity = Physics3DSettings.I.MaxGravity * _maxGravityCoef;
 
             Quaternion _rotation = Quaternion.FromToRotation(Vector3.down, GravitySense);
             float _vertical = GetRelativeVector(Velocity.Force, _rotation).y;
 
             if (_vertical > _maxGravity) {
-                _vertical = Mathf.Max(PhysicsSettings.I.Gravity * DeltaTime * _gravityCoef * gravityFactor, _maxGravity - _vertical);
+                _vertical = Mathf.Max(Physics3DSettings.I.Gravity * DeltaTime * _gravityCoef * gravityFactor, _maxGravity - _vertical);
                 AddForceVelocity(-GravitySense * _vertical);
             }
         }
@@ -817,8 +815,8 @@ namespace EnhancedFramework.Movable3D {
             // Reduce flat force velocity for the next frame.
             if (!_force.Flat().IsNull()) {
                 float forceDeceleration = IsGrounded
-                                        ? PhysicsSettings.I.GroundDecelerationForce
-                                        : PhysicsSettings.I.AirDecelerationForce;
+                                        ? Physics3DSettings.I.GroundDecelerationForce
+                                        : Physics3DSettings.I.AirDecelerationForce;
 
                 _force = Vector3.MoveTowards(_force, new Vector3(0f, _force.y, 0f), forceDeceleration * DeltaTime);
             }
@@ -894,7 +892,7 @@ namespace EnhancedFramework.Movable3D {
                 Vector3 _force = GetRelativeVector(Velocity.Force, _rotation);
 
                 _force.y = 0f;
-                _force *= PhysicsSettings.I.OnGroundedForceMultiplier;
+                _force *= Physics3DSettings.I.OnGroundedForceMultiplier;
 
                 Velocity.Force = GetWorldVector(_force, _rotation);
             }

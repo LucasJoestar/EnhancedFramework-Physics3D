@@ -1,11 +1,9 @@
 {
-    "name": "EnhancedFramework.Movable3D",
-    "rootNamespace": "EnhancedFramework.Movable3D",
+    "name": "EnhancedFramework.Physics3D",
+    "rootNamespace": "EnhancedFramework.Physics3D",
     "references": [
         "EnhancedEditor",
-        "EnhancedFramework.Core",
-        "EnhancedFramework.Physics3D",
-        "EnhancedFramework.Settings"
+        "EnhancedFramework.Core"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
