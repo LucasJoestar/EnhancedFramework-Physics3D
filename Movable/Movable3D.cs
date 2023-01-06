@@ -559,7 +559,7 @@ namespace EnhancedFramework.Physics3D {
                 velocityCoefBuffer.Add(coef);
                 VelocityCoef *= coef;
             } else {
-                this.LogWarning("You are trying to add a zero velocity coefficient. This is not allowed.");
+                this.LogWarningMessage("You are trying to add a zero velocity coefficient - This is not allowed");
             }
         }
 
@@ -572,7 +572,7 @@ namespace EnhancedFramework.Physics3D {
                 velocityCoefBuffer.Remove(coef);
                 VelocityCoef /= coef;
             } else {
-                this.LogWarning("You are trying to remove an invalid velocity coefficient. This is not allowed.");
+                this.LogWarningMessage("You are trying to remove an invalid velocity coefficient - This is not allowed");
             }
         }
 
@@ -685,7 +685,7 @@ namespace EnhancedFramework.Physics3D {
 
             // Debug.
             if (debugVelocity) {
-                this.LogWarning($"Velocity => M{_velocity.Movement} | F{_velocity.Force} | I{_velocity.Instant} | Final{_infos.AppliedVelocity}");
+                this.LogWarningMessage($"Velocity => M{_velocity.Movement} | F{_velocity.Force} | I{_velocity.Instant} | Final{_infos.AppliedVelocity}");
             }
 
             // Post update callback.
@@ -739,7 +739,7 @@ namespace EnhancedFramework.Physics3D {
         public virtual void SetGravityMode(GravityMode _gravityMode) {
             GravityMode = _gravityMode;
 
-            this.Log($"New GravityMode affected to this movable => {_gravityMode}");
+            this.LogMessage($"New GravityMode affected to this movable => {_gravityMode}");
         }
         #endregion
 

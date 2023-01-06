@@ -268,7 +268,7 @@ namespace EnhancedFramework.Physics3D {
                         }
                     }
 
-                    #if DEBUG_LOGGER
+                    #if DEVELOPMENT
                     // Debug utility. Should be remove at some point.
                     for (int i = 0; i < _amount; i++) {
                         if (castBuffer[i].collider == collider) {

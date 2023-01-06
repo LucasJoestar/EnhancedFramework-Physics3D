@@ -303,16 +303,16 @@ namespace EnhancedFramework.Physics3D {
         /// <summary>
         /// Setup this object destination position.
         /// </summary>
-        /// <inheritdoc cref="CreatureMovable3DPath.SetPath(Vector3, Action{bool, Movable3D})"/>
-        public void SetPath(Vector3 _destination, Action<bool, Movable3D> _onComplete = null) {
+        /// <inheritdoc cref="CreatureMovable3DPath.SetPath(Vector3, Action{bool, CreatureMovable3D})"/>
+        public void MoveTo(Vector3 _destination, Action<bool, CreatureMovable3D> _onComplete = null) {
             path.SetPath(_destination, _onComplete);
         }
 
         /// <summary>
         /// Setup this object path positions.
         /// </summary>
-        /// <inheritdoc cref="CreatureMovable3DPath.SetPath(Vector3[], Action{bool, Movable3D})"/>
-        public void SetPath(Vector3[] _path, Action<bool, Movable3D> _onComplete = null) {
+        /// <inheritdoc cref="CreatureMovable3DPath.SetPath(Vector3[], Action{bool, CreatureMovable3D})"/>
+        public void MoveTo(Vector3[] _path, Action<bool, CreatureMovable3D> _onComplete = null) {
             path.SetPath(_path, _onComplete);
         }
         #endregion

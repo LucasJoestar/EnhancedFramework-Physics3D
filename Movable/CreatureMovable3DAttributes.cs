@@ -18,7 +18,8 @@ namespace EnhancedFramework.Physics3D {
 	/// <summary>
 	/// <see cref="CreatureMovable3D"/> instance associated configurable attributes.
 	/// </summary>
-    [CreateAssetMenu(fileName = "ATB_CreatureAttributes", menuName = "Enhanced Framework/Attributes/Creature Movable 3D Attributes", order = 150)]
+    [CreateAssetMenu(fileName = "ATB_CreatureAttributes", menuName = FrameworkUtility.MenuPath + "Attributes/Creature Movable 3D Attributes",
+					 order = FrameworkUtility.MenuOrder)]
 	public class CreatureMovable3DAttributes : ScriptableObject {
 		#region Global Members
 		[Section("Creature Movable Attributes")]
