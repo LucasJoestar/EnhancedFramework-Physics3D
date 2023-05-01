@@ -128,7 +128,7 @@ namespace EnhancedFramework.Physics3D {
     /// </summary>
     public interface ICreatureMovable3DRotationController {
         /// <inheritdoc cref="CreatureMovable3D.Turn(float)"/>
-        bool OnTurn(float _angleIncrement);
+        bool OnTurn(ref float _angleIncrement);
 
         /// <inheritdoc cref="CreatureMovable3D.TurnTo(Vector3, Action)"/>
         bool OnTurnTo(Vector3 _forward, Action _onComplete);
@@ -265,7 +265,7 @@ namespace EnhancedFramework.Physics3D {
         #endregion
 
         #region Rotation
-        public bool OnTurn(float _angleIncrement) {
+        public bool OnTurn(ref float _angleIncrement) {
             return false;
         }
 

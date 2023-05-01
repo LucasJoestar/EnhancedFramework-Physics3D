@@ -630,12 +630,11 @@ namespace EnhancedFramework.Physics3D {
         #endregion
 
         #region Global Members
-        [Space(10f, order = 0), HorizontalLine(SuperColor.Green, 1f, order = 1), Space(5f, order = 2)]
-        [Section("Creature", order = 3)]
+        [Space(5f), PropertyOrder(1)]
 
         [SerializeField, Enhanced, Required] protected CreatureMovable3DAttributes attributes = null;
 
-        [Space(5f)]
+        [PropertyOrder(3)]
 
         [SerializeField, Enhanced, ReadOnly] protected Vector3 forward = Vector3.zero;
 
@@ -933,7 +932,8 @@ namespace EnhancedFramework.Physics3D {
         /// <param name="_angleIncrement">Local rotation angle increment.</param>
         /// <returns><inheritdoc cref="Movable3D.Doc" path="/returns"/></returns>
         public virtual bool Turn(float _angleIncrement) {
-            if (rotationController.OnTurn(_angleIncrement)) {
+
+            if (rotationController.OnTurn(ref _angleIncrement)) {
                 return true;
             }
 

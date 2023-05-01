@@ -25,7 +25,7 @@ namespace EnhancedFramework.Physics3D.Timeline {
             base.GatherProperties(_director, _driver);
 
             Object _object = _director.GetGenericBinding(this);
-            if ((_object == null) || !(_object is Movable3D _movable)) {
+            if ((_object == null) || !(_object is Movable3D _movable) || (_movable == null)) {
                 return;
             }
 

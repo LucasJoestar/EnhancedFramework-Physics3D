@@ -137,11 +137,11 @@ namespace EnhancedFramework.Physics3D {
     /// </summary>
     [SelectionBase, RequireComponent(typeof(Rigidbody))]
     [AddComponentMenu(FrameworkUtility.MenuPath + "Physics 3D/Movable 3D"), DisallowMultipleComponent]
-    public class Movable3D : EnhancedBehaviour, IMovable3D, IMovableUpdate {
+    public class Movable3D : EnhancedBehaviour, IMovable3D, IMovableUpdate, ITriggerActor {
         public override UpdateRegistration UpdateRegistration => base.UpdateRegistration | UpdateRegistration.Init | UpdateRegistration.Movable;
 
         #region Global Members
-        [Section("Movable")]
+        [Section("Movable"), PropertyOrder(0)]
 
         [Tooltip("Collider used for detecting physics collisions")]
         [SerializeField] protected new PhysicsCollider3D collider   = new PhysicsCollider3D();
@@ -151,7 +151,7 @@ namespace EnhancedFramework.Physics3D {
 
         // -----------------------
 
-        [Space(10f), HorizontalLine(SuperColor.Grey, 1f), Space(10f)]
+        [Space(10f), HorizontalLine(SuperColor.Grey, 1f), Space(10f), PropertyOrder(2)]
 
         [Tooltip("Current speed of this object")]
         [SerializeField, Enhanced, ReadOnly("IsSpeedEditable")] protected float speed = 1f;
@@ -983,61 +983,66 @@ namespace EnhancedFramework.Physics3D {
         }
         #endregion
 
-        #region Refresh
+        #region Trigger
         private static readonly List<ITrigger> getTriggerComponentBuffer    = new List<ITrigger>();
         private static readonly List<ITrigger> triggerBuffer                = new List<ITrigger>();
 
         // All triggers currently overlapping with this object.
-        protected readonly List<ITrigger> overlappingTriggers = new List<ITrigger>();
+        protected readonly EnhancedCollection<ITrigger> overlappingTriggers = new EnhancedCollection<ITrigger>();
+
+        /// <inheritdoc cref="ITriggerActor.Behaviour"/>
+        EnhancedBehaviour ITriggerActor.Behaviour {
+            get { return this; }
+        }
 
         // -----------------------
 
         /// <summary>
-        /// Refresh this object position, and extract it from any overlapping collider.
+        /// Refreshes this object trigger interaction.
         /// </summary>
-        public void RefreshPosition() {
+        protected void RefreshTriggers() {
 
-            // Triggers.
+            // Overlapping triggers.
             int _amount = TriggerOverlap();
             triggerBuffer.Clear();
 
             for (int i = 0; i < _amount; i++) {
                 Collider _overlap = GetOverlapTriggerAt(i);
 
-                if (_overlap.isTrigger) {
+                if (!_overlap.isTrigger) {
+                    continue;
+                }
+
+                getTriggerComponentBuffer.Clear();
+
+                // If there is a LevelTrigger, ignore any other trigger.
+                if (_overlap.TryGetComponent(out LevelTrigger _levelTrigger) && _levelTrigger.isActiveAndEnabled) {
+
+                    getTriggerComponentBuffer.Add(_levelTrigger);
+
+                } else {
 
                     _overlap.GetComponents(getTriggerComponentBuffer);
+                }
 
-                    for (int j = 0; j < getTriggerComponentBuffer.Count; j++) {
+                // Activation.
+                for (int j = 0; j < getTriggerComponentBuffer.Count; j++) {
 
-                        ITrigger _trigger = getTriggerComponentBuffer[j];
-                        triggerBuffer.Add(_trigger);
+                    ITrigger _trigger = getTriggerComponentBuffer[j];
+                    if ((_trigger is Behaviour _behaviour) && !_behaviour.isActiveAndEnabled) {
+                        continue;
+                    }
 
-                        // Trigger enter.
-                        if (HasEnteredTrigger(_trigger)) {
-                            overlappingTriggers.Add(_trigger);
-                            OnEnterTrigger(_trigger);
-                        }
+                    triggerBuffer.Add(_trigger);
+
+                    // Trigger enter.
+                    if (HasEnteredTrigger(_trigger)) {
+
+                        overlappingTriggers.Add(_trigger);
+                        OnEnterTrigger(_trigger);
                     }
                 }
             }
-
-            // Solid colliders.
-            _amount = ColliderOverlap();
-
-            for (int i = 0; i < _amount; i++) {
-                Collider _overlap = GetOverlapColliderAt(i);
-
-                if (Physics.ComputePenetration(collider.Collider, rigidbody.position, rigidbody.rotation,
-                                               _overlap, _overlap.transform.position, _overlap.transform.rotation,
-                                               out Vector3 _direction, out float _distance)) {
-                    // Collider extraction.
-                    OnExtractFromCollider(_overlap, _direction, _distance);
-                }
-            }
-
-            shouldBeRefreshed = false;
-            lastPosition = transform.position;
 
             // Exits from no more detected triggers.
             for (int i = overlappingTriggers.Count; i-- > 0;) {
@@ -1077,6 +1082,80 @@ namespace EnhancedFramework.Physics3D {
 
                 return true;
             }
+        }
+
+        /// <summary>
+        /// Exits from all overlapping triggers.
+        /// </summary>
+        protected void ExitTriggers() {
+            foreach (var _trigger in overlappingTriggers) {
+                OnExitTrigger(_trigger);
+            }
+
+            overlappingTriggers.Clear();
+        }
+
+        /// <summary>
+        /// Called when this object enters in a trigger.
+        /// </summary>
+        /// <param name="_trigger">Entering <see cref="ITrigger"/>.</param>
+        protected virtual void OnEnterTrigger(ITrigger _trigger) {
+
+            _trigger.OnEnterTrigger(this);
+            triggerController.OnEnterTrigger(_trigger);
+        }
+
+        /// <summary>
+        /// Called when this object exits from a trigger.
+        /// </summary>
+        /// <param name="_trigger">Exiting <see cref="ITrigger"/>.</param>
+        protected virtual void OnExitTrigger(ITrigger _trigger) {
+
+            _trigger.OnExitTrigger(this);
+            triggerController.OnExitTrigger(_trigger);
+        }
+
+        // -------------------------------------------
+        // Triggers
+        // -------------------------------------------
+
+        /// <inheritdoc cref="ITriggerActor.ExitTrigger(ITrigger)"/>
+        void ITriggerActor.ExitTrigger(ITrigger _trigger) {
+
+            // Remove from list.
+            int _index = overlappingTriggers.IndexOf(_trigger);
+            if (_index != -1) {
+                overlappingTriggers.RemoveAt(_index);
+            }
+
+            OnExitTrigger(_trigger);
+        }
+        #endregion
+
+        #region Refresh
+        /// <summary>
+        /// Refresh this object position, and extract it from any overlapping collider.
+        /// </summary>
+        public void RefreshPosition() {
+
+            // Solid colliders.
+            int _amount = ColliderOverlap();
+
+            for (int i = 0; i < _amount; i++) {
+                Collider _overlap = GetOverlapColliderAt(i);
+
+                if (Physics.ComputePenetration(collider.Collider, rigidbody.position, rigidbody.rotation,
+                                               _overlap, _overlap.transform.position, _overlap.transform.rotation,
+                                               out Vector3 _direction, out float _distance)) {
+                    // Collider extraction.
+                    OnExtractFromCollider(_overlap, _direction, _distance);
+                }
+            }
+
+            RefreshTriggers();
+
+            shouldBeRefreshed = false;
+            lastPosition = transform.position;
         }
 
         // -------------------------------------------
@@ -1119,39 +1198,6 @@ namespace EnhancedFramework.Physics3D {
         /// <returns>Overlapping trigger at the given index.</returns>
         public Collider GetOverlapTriggerAt(int _index) {
             return PhysicsCollider3D.GetOverlapCollider(_index);
-        }
-
-        // -------------------------------------------
-        // Triggers
-        // -------------------------------------------
-
-        /// <summary>
-        /// Exits from all overlapping triggers.
-        /// </summary>
-        protected void ExitTriggers() {
-            foreach (var _trigger in overlappingTriggers) {
-                OnExitTrigger(_trigger);
-            }
-
-            overlappingTriggers.Clear();
-        }
-
-        /// <summary>
-        /// Called when this object enters in a trigger.
-        /// </summary>
-        /// <param name="_trigger">Entering <see cref="ITrigger"/>.</param>
-        protected virtual void OnEnterTrigger(ITrigger _trigger) {
-            _trigger.OnEnterTrigger(this);
-            triggerController.OnEnterTrigger(_trigger);
-        }
-
-        /// <summary>
-        /// Called when this object exits from a trigger.
-        /// </summary>
-        /// <param name="_trigger">Exiting <see cref="ITrigger"/>.</param>
-        protected virtual void OnExitTrigger(ITrigger _trigger) {
-            _trigger.OnExitTrigger(this);
-            triggerController.OnExitTrigger(_trigger);
         }
         #endregion
 
