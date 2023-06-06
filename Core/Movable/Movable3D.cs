@@ -137,6 +137,7 @@ namespace EnhancedFramework.Physics3D {
     /// </summary>
     [SelectionBase, RequireComponent(typeof(Rigidbody))]
     [AddComponentMenu(FrameworkUtility.MenuPath + "Physics 3D/Movable 3D"), DisallowMultipleComponent]
+    #pragma warning disable
     public class Movable3D : EnhancedBehaviour, IMovable3D, IMovableUpdate, ITriggerActor {
         public override UpdateRegistration UpdateRegistration => base.UpdateRegistration | UpdateRegistration.Init | UpdateRegistration.Movable;
 
@@ -161,10 +162,8 @@ namespace EnhancedFramework.Physics3D {
 
         [Space(10f)]
 
-        #if DEVELOPMENT
         [Tooltip("Sends a log about this object Frame Velocity every frame")]
         [SerializeField] private bool debugVelocity = false;
-        #endif
 
         [Tooltip("Makes sure that when this object stops moving, its Velocity is equalized based on the previous frame instead of continuing on its actual Force")]
         [SerializeField] protected bool equalizeVelocity = false;

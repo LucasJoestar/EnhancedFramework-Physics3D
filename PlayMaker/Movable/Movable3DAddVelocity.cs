@@ -11,19 +11,13 @@ using Tooltip = HutongGames.PlayMaker.TooltipAttribute;
 
 namespace EnhancedFramework.Physics3D.PlayMaker {
     /// <summary>
-    /// <see cref="FsmStateAction"/> used to add a velocity to a <see cref="Movable3D"/>.
+    /// Base <see cref="FsmStateAction"/> used to add a velocity to a <see cref="Movable3D"/>.
     /// </summary>
-    [Tooltip("Adds a velocity to a Movable3D.")]
-    [ActionCategory("Movable 3D")]
-    public class Movable3DAddVelocity : FsmStateAction {
+    public abstract class BaseMovable3DAddVelocity : BaseMovable3DFSM {
         #region Global Members
         // -------------------------------------------
-        // Movable - Velocity - Instant - Every Frame
+        // Velocity - Instant - Every Frame
         // -------------------------------------------
-
-        [Tooltip("The Movable instance to add velocity to.")]
-        [RequiredField, ObjectType(typeof(Movable3D))]
-        public FsmObject Movable;
 
         [Tooltip("Velocity to add to the object.")]
         [RequiredField]
@@ -41,7 +35,6 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
         public override void Reset() {
             base.Reset();
 
-            Movable = null;
             Velocity = null;
             InstantVelocity = false;
             EveryFrame = false;
@@ -66,7 +59,7 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
         // -----------------------
 
         private void AddVelocity() {
-            if (Movable.Value is Movable3D _movable) {
+            if (GetMovable(out Movable3D _movable)) {
 
                 // Velocity mode.
                 if (InstantVelocity.Value) {
@@ -75,6 +68,45 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
                     _movable.AddForceVelocity(Velocity.Value);
                 }
             }
+        }
+        #endregion
+    }
+
+    /// <summary>
+    /// <see cref="FsmStateAction"/> used to add a velocity to a <see cref="Movable3D"/>.
+    /// </summary>
+    [Tooltip("Adds a velocity to a Movable3D.")]
+    [ActionCategory("Movable 3D")]
+    public class Movable3DAddVelocity : BaseMovable3DAddVelocity {
+        #region Global Members
+        // -------------------------------------------
+        // Movable
+        // -------------------------------------------
+
+        [Tooltip("The Movable instance to add velocity to.")]
+        [RequiredField, ObjectType(typeof(Movable3D))]
+        public FsmObject Movable;
+        #endregion
+
+        #region Behaviour
+        public override void Reset() {
+            base.Reset();
+
+            Movable = null;
+        }
+
+        // -----------------------
+
+        public override bool GetMovable(out Movable3D _movable) {
+
+            if (Movable.Value is Movable3D _temp) {
+
+                _movable = _temp;
+                return true;
+            }
+
+            _movable = null;
+            return false;
         }
         #endregion
     }

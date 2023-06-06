@@ -121,8 +121,11 @@ namespace EnhancedFramework.Physics3D.Timeline {
             #endif
 
             // Complete turn.
-            Creature.StopTurnTo();
-            Creature.SetRotation(Forward.rotation);
+            if (CompleteOnExit) {
+
+                Creature.StopTurnTo();
+                Creature.SetRotation(Forward.rotation);
+            }
         }
 
         // -------------------------------------------

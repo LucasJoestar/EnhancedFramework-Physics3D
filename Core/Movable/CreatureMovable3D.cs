@@ -810,6 +810,8 @@ namespace EnhancedFramework.Physics3D {
         #endregion
 
         #region Navigation
+        private const float PathDelay = .01f;
+
         private Vector3 lastPathMovement = Vector3.zero;
         private PathHandler path = default;
 
@@ -889,10 +891,23 @@ namespace EnhancedFramework.Physics3D {
         /// </summary>
         /// <param name="_path">This object path.</param>
         internal protected virtual PathHandler SetNavigationPath(PathHandler _path) {
-            path = _path;
-            pathController.OnNavigateTo(_path);
+
+            // Use a delay in case the current path is being completed during the same frame.
+            if (path.IsValid) {
+                Delayer.Call(PathDelay, SetPath, true);
+            } else {
+                SetPath();
+            }
 
             return _path;
+
+            // ----- Local Methods ----- \\
+
+            void SetPath() {
+
+                path = _path;
+                pathController.OnNavigateTo(_path);
+            }
         }
 
         /// <summary>
@@ -922,6 +937,8 @@ namespace EnhancedFramework.Physics3D {
         #endregion
 
         #region Orientation
+        private const float MinRotationAngle = PathRotationTurnAngle - .2f;
+
         private Action onTurnComplete = null;
 
         // -----------------------
@@ -931,9 +948,9 @@ namespace EnhancedFramework.Physics3D {
         /// </summary>
         /// <param name="_angleIncrement">Local rotation angle increment.</param>
         /// <returns><inheritdoc cref="Movable3D.Doc" path="/returns"/></returns>
-        public virtual bool Turn(float _angleIncrement) {
+        public virtual bool Turn(float _angleIncrement, bool _withController = true) {
 
-            if (rotationController.OnTurn(ref _angleIncrement)) {
+            if (_withController && rotationController.OnTurn(ref _angleIncrement)) {
                 return true;
             }
 
@@ -1027,15 +1044,25 @@ namespace EnhancedFramework.Physics3D {
             float _angle = GetForwardAngle(forward);
 
             // Rotation achieved.
-            if (Mathf.Approximately(_angle, 0f)) {
+            if (Mathf.Abs(_angle) < MinRotationAngle) {
 
                 StopTurnTo();
                 return;
             }
 
             // Rotate.
+            float _forwardAngle = _angle;
             _angle = Mathf.MoveTowards(0f, _angle, GetTurnAngle(1f));
-            Turn(_angle);
+
+
+            // Do not increment if exact angle.
+            bool _withController = true;
+
+            if (Mathf.Approximately(_angle, _forwardAngle)) {
+                _withController = false;
+            }
+
+            Turn(_angle, _withController);
         }
 
         private float GetTurnAngle(float _coef) {
@@ -1043,6 +1070,11 @@ namespace EnhancedFramework.Physics3D {
         }
 
         private float GetForwardAngle(Vector3 _forward) {
+
+            // Make sure vector up is valid.
+            _forward = Vector3.ProjectOnPlane(_forward, Transform.up);
+
+            // Get angle.
             float _angle = Vector3.SignedAngle(transform.forward, _forward, transform.up);
 
             if (Mathf.Abs(_angle) > 180f) {
@@ -1085,7 +1117,7 @@ namespace EnhancedFramework.Physics3D {
 
                         // If stuck for too long, cancel path.
                         if (pathStuckDuration > PathStuckMaxDuration) {
-                            path.Cancel();
+                            CompleteNavigation();
                         } else {
                             _isStuck = true;
                         }

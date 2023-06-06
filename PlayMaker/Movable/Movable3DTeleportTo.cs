@@ -4,6 +4,7 @@
 //
 // ============================================================================================ //
 
+using EnhancedFramework.Core;
 using HutongGames.PlayMaker;
 using UnityEngine;
 
@@ -11,62 +12,58 @@ using Tooltip = HutongGames.PlayMaker.TooltipAttribute;
 
 namespace EnhancedFramework.Physics3D.PlayMaker {
     /// <summary>
-    /// Base <see cref="FsmStateAction"/> used to stop a <see cref="CreatureMovable3D"/> current navigation.
+    /// Base <see cref="FsmStateAction"/> used to teleport a <see cref="Movable3D"/> to a specific position.
     /// </summary>
-    public abstract class BaseMovable3DStopNavigation : BaseCreatureMovable3DFSM {
+    public abstract class BaseMovable3DTeleportTo : BaseMovable3DFSM {
         #region Global Members
         // -------------------------------------------
-        // Complete
+        // Position
         // -------------------------------------------
 
-        [Tooltip("Whether to complete the navigation path or not.")]
+        [Tooltip("Destination position to teleport the Movable to.")]
         [RequiredField]
-        public FsmBool Complete;
+        public FsmOwnerDefault Position;
         #endregion
 
         #region Behaviour
         public override void Reset() {
             base.Reset();
 
-            Complete = true;
+            Position = null;
         }
 
         public override void OnEnter() {
             base.OnEnter();
 
-            StopNavigation();
+            Move();
             Finish();
         }
 
         // -----------------------
 
-        private void StopNavigation() {
-            if (GetMovable(out CreatureMovable3D _movable)) {
+        private void Move() {
+            GameObject _gameObject = Fsm.GetOwnerDefaultTarget(Position);
 
-                // Stop mode.
-                if (Complete.Value) {
-                    _movable.CompleteNavigation();
-                } else {
-                    _movable.CancelNavigation();
-                }
+            if (_gameObject.IsValid() && GetMovable(out Movable3D _movable)) {
+                _movable.SetPositionAndRotation(_gameObject.transform);
             }
         }
         #endregion
     }
 
     /// <summary>
-    /// <see cref="FsmStateAction"/> used to stop a <see cref="CreatureMovable3D"/> current navigation.
+    /// <see cref="FsmStateAction"/> used to teleport a <see cref="Movable3D"/> to a specific position.
     /// </summary>
-    [Tooltip("Stops a Movable3D current navigation.")]
+    [Tooltip("Teleports a Movable3D to a specific position in space.")]
     [ActionCategory("Movable 3D")]
-    public class Movable3DStopNavigation : BaseMovable3DStopNavigation {
+    public class Movable3DTeleportTo : BaseMovable3DTeleportTo {
         #region Global Members
         // -------------------------------------------
-        // Movable
+        // Position - Movable
         // -------------------------------------------
 
-        [Tooltip("The Movable instance to stop navigation.")]
-        [RequiredField, ObjectType(typeof(CreatureMovable3D))]
+        [Tooltip("The Movable instance to teleport.")]
+        [RequiredField, ObjectType(typeof(Movable3D))]
         public FsmObject Movable;
         #endregion
 
@@ -79,9 +76,9 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
 
         // -----------------------
 
-        public override bool GetMovable(out CreatureMovable3D _movable) {
+        public override bool GetMovable(out Movable3D _movable) {
 
-            if (Movable.Value is CreatureMovable3D _temp) {
+            if (Movable.Value is Movable3D _temp) {
 
                 _movable = _temp;
                 return true;

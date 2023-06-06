@@ -141,7 +141,9 @@ namespace EnhancedFramework.Physics3D.Timeline {
             #endif
 
             // Complete navigation.
-            navigationPath.Complete();
+            if (CompleteOnExit) {
+                navigationPath.Complete();
+            }
         }
 
         // -------------------------------------------

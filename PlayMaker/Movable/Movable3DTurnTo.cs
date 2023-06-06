@@ -4,6 +4,7 @@
 //
 // ============================================================================================ //
 
+using EnhancedFramework.Core;
 using HutongGames.PlayMaker;
 using UnityEngine;
 
@@ -11,23 +12,17 @@ using Tooltip = HutongGames.PlayMaker.TooltipAttribute;
 
 namespace EnhancedFramework.Physics3D.PlayMaker {
     /// <summary>
-    /// <see cref="FsmStateAction"/> used to turn a <see cref="CreatureMovable3D"/> in a direction.
+    /// Base <see cref="FsmStateAction"/> used to turn a <see cref="CreatureMovable3D"/> in a direction.
     /// </summary>
-    [Tooltip("Turns a Movable3D in a direction.")]
-    [ActionCategory("Movable 3D")]
-    public class Movable3DTurnTo : FsmStateAction {
+    public abstract class BaseMovable3DTurnTo : BaseCreatureMovable3DFSM {
         #region Global Members
         // -------------------------------------------
-        // Movable - Direction - Events
+        // Direction - Events
         // -------------------------------------------
-
-        [Tooltip("The Movable instance to turn.")]
-        [RequiredField, ObjectType(typeof(CreatureMovable3D))]
-        public FsmObject Movable;
 
         [Tooltip("Forward direction to turn the Movable to.")]
         [RequiredField]
-        public FsmVector3 Forward;
+        public FsmOwnerDefault Forward;
 
         [Tooltip("Event to send when the turn operation is stopped.")]
         public FsmEvent StopEvent;
@@ -37,7 +32,6 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
         public override void Reset() {
             base.Reset();
 
-            Movable = null;
             Forward = null;
             StopEvent = null;
         }
@@ -52,8 +46,11 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
         // -----------------------
 
         private void TurnTo() {
-            if (Movable.Value is CreatureMovable3D _movable) {
-                _movable.TurnTo(Forward.Value, OnComplete);
+
+            GameObject _gameObject = Fsm.GetOwnerDefaultTarget(Forward);
+
+            if (_gameObject.IsValid() && GetMovable(out CreatureMovable3D _movable)) {
+                _movable.TurnTo(_gameObject.transform.forward, OnComplete);
             } else {
                 OnComplete();
             }
@@ -63,6 +60,45 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
             void OnComplete() {
                 Fsm.Event(StopEvent);
             }
+        }
+        #endregion
+    }
+
+    /// <summary>
+    /// <see cref="FsmStateAction"/> used to turn a <see cref="CreatureMovable3D"/> in a direction.
+    /// </summary>
+    [Tooltip("Turns a Movable3D in a direction.")]
+    [ActionCategory("Movable 3D")]
+    public class Movable3DTurnTo : BaseMovable3DTurnTo {
+        #region Global Members
+        // -------------------------------------------
+        // Movable
+        // -------------------------------------------
+
+        [Tooltip("The Movable instance to turn.")]
+        [RequiredField, ObjectType(typeof(CreatureMovable3D))]
+        public FsmObject Movable;
+        #endregion
+
+        #region Behaviour
+        public override void Reset() {
+            base.Reset();
+
+            Movable = null;
+        }
+
+        // -----------------------
+
+        public override bool GetMovable(out CreatureMovable3D _movable) {
+
+            if (Movable.Value is CreatureMovable3D _temp) {
+
+                _movable = _temp;
+                return true;
+            }
+
+            _movable = null;
+            return false;
         }
         #endregion
     }

@@ -11,19 +11,13 @@ using Tooltip = HutongGames.PlayMaker.TooltipAttribute;
 
 namespace EnhancedFramework.Physics3D.PlayMaker {
     /// <summary>
-    /// <see cref="FsmStateAction"/> used to move a <see cref="Movable3D"/> in a direction.
+    /// Base <see cref="FsmStateAction"/> used to move a <see cref="Movable3D"/> in a direction.
     /// </summary>
-    [Tooltip("Moves a Movable3D in a direction.")]
-    [ActionCategory("Movable 3D")]
-    public class Movable3DMove : FsmStateAction {
+    public abstract class BaseMovable3DMove : BaseMovable3DFSM {
         #region Global Members
         // -------------------------------------------
-        // Movable - Velocity - Every Frame
+        // Velocity - Every Frame
         // -------------------------------------------
-
-        [Tooltip("The Movable instance to move.")]
-        [RequiredField, ObjectType(typeof(Movable3D))]
-        public FsmObject Movable;
 
         [Tooltip("Direction used to move the object.")]
         [RequiredField]
@@ -37,7 +31,6 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
         public override void Reset() {
             base.Reset();
 
-            Movable = null;
             Direction = null;
             EveryFrame = false;
         }
@@ -61,10 +54,49 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
         // -----------------------
 
         private void Move() {
-            if (Movable.Value is Movable3D _movable) {
+            if (GetMovable(out Movable3D _movable)) {
 
                 _movable.Move(Direction.Value);
             }
+        }
+        #endregion
+    }
+
+    /// <summary>
+    /// <see cref="FsmStateAction"/> used to move a <see cref="Movable3D"/> in a direction.
+    /// </summary>
+    [Tooltip("Moves a Movable3D in a direction.")]
+    [ActionCategory("Movable 3D")]
+    public class Movable3DMove : BaseMovable3DMove {
+        #region Global Members
+        // -------------------------------------------
+        // Movable
+        // -------------------------------------------
+
+        [Tooltip("The Movable instance to move.")]
+        [RequiredField, ObjectType(typeof(Movable3D))]
+        public FsmObject Movable;
+        #endregion
+
+        #region Behaviour
+        public override void Reset() {
+            base.Reset();
+
+            Movable = null;
+        }
+
+        // -----------------------
+
+        public override bool GetMovable(out Movable3D _movable) {
+
+            if (Movable.Value is Movable3D _temp) {
+
+                _movable = _temp;
+                return true;
+            }
+
+            _movable = null;
+            return false;
         }
         #endregion
     }
