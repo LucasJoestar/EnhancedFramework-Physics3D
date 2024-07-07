@@ -5,8 +5,8 @@
 // ============================================================================================ //
 
 using EnhancedFramework.Timeline;
-using UnityEngine.Playables;
 using UnityEngine;
+using UnityEngine.Playables;
 using UnityEngine.Timeline;
 
 using DisplayName = System.ComponentModel.DisplayNameAttribute;
@@ -19,13 +19,13 @@ namespace EnhancedFramework.Physics3D.Timeline {
     [TrackClipType(typeof(IMovable3DPlayableAsset))]
     [TrackBindingType(typeof(Movable3D), TrackBindingFlags.AllowCreateComponent)]
     [DisplayName("Enhanced Framework/Movable 3D Track")]
-    public class Movable3DTrack : EnhancedTrack {
+    public sealed class Movable3DTrack : EnhancedTrack {
         #region Behaviour
         public override void GatherProperties(PlayableDirector _director, IPropertyCollector _driver) {
             base.GatherProperties(_director, _driver);
 
             Object _object = _director.GetGenericBinding(this);
-            if ((_object == null) || !(_object is Movable3D _movable) || (_movable == null)) {
+            if ((_object == null) || (_object is not Movable3D _movable) || (_movable == null)) {
                 return;
             }
 

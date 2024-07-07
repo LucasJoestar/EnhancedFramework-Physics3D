@@ -4,7 +4,7 @@
 //
 // ============================================================================================ //
 
-using EnhancedFramework.Core;
+using EnhancedEditor;
 using HutongGames.PlayMaker;
 using UnityEngine;
 
@@ -32,7 +32,7 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
         public override void Reset() {
             base.Reset();
 
-            Forward = null;
+            Forward   = null;
             StopEvent = null;
         }
 
@@ -69,7 +69,7 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
     /// </summary>
     [Tooltip("Turns a Movable3D in a direction.")]
     [ActionCategory("Movable 3D")]
-    public class Movable3DTurnTo : BaseMovable3DTurnTo {
+    public sealed class Movable3DTurnTo : BaseMovable3DTurnTo {
         #region Global Members
         // -------------------------------------------
         // Movable

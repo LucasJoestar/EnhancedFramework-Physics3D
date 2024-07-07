@@ -11,5 +11,5 @@ namespace EnhancedFramework.Physics3D {
 	/// Component to add on any object to be considered as a non-ground surface.
 	/// </summary>
 	[AddComponentMenu(FrameworkUtility.MenuPath + "Physics 3D/Non Ground Surface"), DisallowMultipleComponent]
-	public class NonGroundSurface3D : MonoBehaviour { }
+	public sealed class NonGroundSurface3D : MonoBehaviour { }
 }

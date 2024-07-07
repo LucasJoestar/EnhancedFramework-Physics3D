@@ -53,7 +53,7 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
     /// </summary>
     [Tooltip("Pushes and apply a velocity coefficient on a Movable3D.")]
     [ActionCategory("Movable 3D")]
-    public class Movable3DPushVelocityCoef : BaseMovable3DPushVelocityCoef {
+    public sealed class Movable3DPushVelocityCoef : BaseMovable3DPushVelocityCoef {
         #region Global Members
         // -------------------------------------------
         // Movable

@@ -11,7 +11,7 @@ using Tooltip = HutongGames.PlayMaker.TooltipAttribute;
 
 namespace EnhancedFramework.Physics3D.PlayMaker {
     /// <summary>
-    /// Base <see cref="FsmStateAction"/> used to move a <see cref="Movable3D"/> in a direction.
+    /// Base <see cref="FsmStateAction"/> used to move an <see cref="Movable3D"/> in a direction.
     /// </summary>
     public abstract class BaseMovable3DMove : BaseMovable3DFSM {
         #region Global Members
@@ -31,7 +31,7 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
         public override void Reset() {
             base.Reset();
 
-            Direction = null;
+            Direction  = null;
             EveryFrame = false;
         }
 
@@ -67,7 +67,7 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
     /// </summary>
     [Tooltip("Moves a Movable3D in a direction.")]
     [ActionCategory("Movable 3D")]
-    public class Movable3DMove : BaseMovable3DMove {
+    public sealed class Movable3DMove : BaseMovable3DMove {
         #region Global Members
         // -------------------------------------------
         // Movable

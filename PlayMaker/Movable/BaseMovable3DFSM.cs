@@ -22,7 +22,7 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
     }
 
     /// <summary>
-    /// Base <see cref="FsmStateAction"/> for a <see cref="Movable3D"/>.
+    /// Base <see cref="FsmStateAction"/> for a <see cref="CreatureMovable3D"/>.
     /// </summary>
     public abstract class BaseCreatureMovable3DFSM : FsmStateAction {
         #region Global Members

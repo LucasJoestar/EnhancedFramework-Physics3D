@@ -59,7 +59,7 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
     /// </summary>
     [Tooltip("Stops a Movable3D current navigation.")]
     [ActionCategory("Movable 3D")]
-    public class Movable3DStopNavigation : BaseMovable3DStopNavigation {
+    public sealed class Movable3DStopNavigation : BaseMovable3DStopNavigation {
         #region Global Members
         // -------------------------------------------
         // Movable

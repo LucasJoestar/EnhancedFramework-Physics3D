@@ -11,6 +11,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
+using static EnhancedFramework.Core.AdvancedCurveValue;
+
 namespace EnhancedFramework.Physics3D {
     /// <summary>
     /// <see cref="NavigationPath3D"/>-related wrapper for a single path operation.
@@ -149,7 +151,7 @@ namespace EnhancedFramework.Physics3D {
     /// <see cref="CreatureMovable3D"/>-related path wrapper class.
     /// </summary>
     [Serializable]
-    public class NavigationPath3D : IHandle, IPoolableObject {
+    public sealed class NavigationPath3D : IHandle, IPoolableObject {
         #region State
         /// <summary>
         /// References all available states for an <see cref="NavigationPath3D"/>.
@@ -438,7 +440,8 @@ namespace EnhancedFramework.Physics3D {
                 if (index == (path.Count - 1)) {
 
                     // Wait for completion.
-                    if (!movable.DoCompleteNavigation()._completed) {
+                    movable.DoCompleteNavigation(out bool _completed);
+                    if (!_completed) {
                         return true;
                     }
 
@@ -517,12 +520,10 @@ namespace EnhancedFramework.Physics3D {
         #endregion
 
         #region Pool
-        void IPoolableObject.OnCreated() {
+        void IPoolableObject.OnCreated(IObjectPool _pool) {
 
             // Create nav mesh helper.
-            if (navMeshPath == null) {
-                navMeshPath = new NavMeshPath();
-            }
+            navMeshPath ??= new NavMeshPath();
         }
 
         void IPoolableObject.OnRemovedFromPool() { }
@@ -548,10 +549,10 @@ namespace EnhancedFramework.Physics3D {
     /// <summary>
     /// <see cref="NavigationPath3D"/> pool managing class.
     /// </summary>
-    internal class NavigationPath3DManager : IObjectPoolManager<NavigationPath3D> {
+    internal sealed class NavigationPath3DManager : IObjectPoolManager<NavigationPath3D> {
         #region Pool
         private static readonly ObjectPool<NavigationPath3D> pool = new ObjectPool<NavigationPath3D>(1);
-        public static readonly NavigationPath3DManager Instance = new NavigationPath3DManager();
+        public static readonly NavigationPath3DManager Instance   = new NavigationPath3DManager();
 
         /// <inheritdoc cref="NavigationPath3DManager"/>
         private NavigationPath3DManager() {
@@ -565,37 +566,47 @@ namespace EnhancedFramework.Physics3D {
         /// <summary>
         /// Get a <see cref="NavigationPath3D"/> instance from the pool.
         /// </summary>
-        /// <inheritdoc cref="ObjectPool{T}.Get"/>
+        /// <inheritdoc cref="ObjectPool{T}.GetPoolInstance"/>
         public static NavigationPath3D Get() {
-            return pool.Get();
+            return pool.GetPoolInstance();
         }
 
         /// <summary>
         /// Releases a specific <see cref="NavigationPath3D"/> instance and sent it back to the pool.
         /// </summary>
-        /// <inheritdoc cref="ObjectPool{T}.Release(T)"/>
+        /// <inheritdoc cref="ObjectPool{T}.ReleasePoolInstance(T)"/>
         public static bool Release(NavigationPath3D _call) {
-            return pool.Release(_call);
+            return pool.ReleasePoolInstance(_call);
         }
 
         /// <summary>
         /// Clears the <see cref="NavigationPath3D"/> pool content.
         /// </summary>
-        /// <inheritdoc cref="ObjectPool{T}.Clear(int)"/>
+        /// <inheritdoc cref="ObjectPool{T}.ClearPool(int)"/>
         public static void ClearPool(int _capacity = 1) {
-            pool.Clear(_capacity);
+            pool.ClearPool(_capacity);
         }
 
         // -------------------------------------------
         // Manager
         // -------------------------------------------
 
-        /// <inheritdoc cref="IObjectPoolManager{NavigationPath3D}.CreateInstance"/>
+        NavigationPath3D IObjectPool<NavigationPath3D>.GetPoolInstance() {
+            return Get();
+        }
+
+        bool IObjectPool<NavigationPath3D>.ReleasePoolInstance(NavigationPath3D _call) {
+            return Release(_call);
+        }
+
+        void IObjectPool.ClearPool(int _capacity) {
+            ClearPool(_capacity);
+        }
+
         NavigationPath3D IObjectPoolManager<NavigationPath3D>.CreateInstance() {
             return new NavigationPath3D();
         }
 
-        /// <inheritdoc cref="IObjectPoolManager{NavigationPath3D}.DestroyInstance(NavigationPath3D)"/>
         void IObjectPoolManager<NavigationPath3D>.DestroyInstance(NavigationPath3D _call) {
             // Cannot destroy the instance, so simply ignore the object and wait for the garbage collector to pick it up.
         }
@@ -606,14 +617,14 @@ namespace EnhancedFramework.Physics3D {
     /// Advanced <see cref="Movable3D"/> with the addition of various creature-like behaviours.
     /// </summary>
     [AddComponentMenu(FrameworkUtility.MenuPath + "Physics 3D/Creature Movable 3D"), DisallowMultipleComponent]
-    public class CreatureMovable3D : Movable3D {
+    public sealed class CreatureMovable3D : Movable3D {
         #region Rotation Mode
         /// <summary>
-        /// Determines how the creature turn when following a path.
+        /// Determines how the object turn when following a path.
         /// </summary>
         public enum PathRotationMode {
             /// <summary>
-            /// Don't turn the creature.
+            /// Don't turn the object.
             /// </summary>
             None                = 0,
 
@@ -632,16 +643,16 @@ namespace EnhancedFramework.Physics3D {
         #region Global Members
         [Space(5f), PropertyOrder(1)]
 
-        [SerializeField, Enhanced, Required] protected CreatureMovable3DAttributes attributes = null;
+        [SerializeField, Enhanced, Required] private CreatureMovable3DAttributes attributes = null;
 
         [PropertyOrder(3)]
 
-        [SerializeField, Enhanced, ReadOnly] protected Vector3 forward = Vector3.zero;
+        [SerializeField, Enhanced, ReadOnly] private Vector3 forward = Vector3.zero;
 
         // -----------------------
 
-        public override CollisionSystem3DType CollisionType {
-            get { return CollisionSystem3DType.Creature; }
+        public override bool IsSpeedEditable {
+            get { return false; }
         }
 
         public override float ClimbHeight {
@@ -651,37 +662,21 @@ namespace EnhancedFramework.Physics3D {
         public override float SnapHeight {
             get { return attributes.SnapHeight; }
         }
-
-        public override bool IsSpeedEditable {
-            get { return false; }
-        }
-        #endregion
-
-        #region Enhanced Behaviour
-        protected override void OnBehaviourEnabled() {
-            base.OnBehaviourEnabled();
-
-            // Attributes.
-            attributes.Register(this);
-        }
-
-        protected override void OnBehaviourDisabled() {
-            base.OnBehaviourDisabled();
-
-            // Attributes.
-            attributes.Unregister(this);
-        }
         #endregion
 
         #region Controller
-        private ICreatureMovable3DRotationController rotationController = DefaultMovable3DController.Instance;
-        private ICreatureMovable3DSpeedController speedController       = DefaultMovable3DController.Instance;
-        private ICreatureMovable3DNavigationController pathController         = DefaultMovable3DController.Instance;
+        private ICreatureMovable3DNavigationController  navigationController    = DefaultMovable3DController.Instance;
+        private ICreatureMovable3DRotationController    rotationController      = DefaultMovable3DController.Instance;
+        private ICreatureMovable3DSpeedController       speedController         = DefaultMovable3DController.Instance;
 
         // -----------------------
 
         public override void RegisterController<T>(T _object) {
-            base.RegisterController<T>(_object);
+            base.RegisterController(_object);
+
+            if (_object is ICreatureMovable3DNavigationController _navigation) {
+                navigationController = _navigation;
+            }
 
             if (_object is ICreatureMovable3DRotationController _rotation) {
                 rotationController = _rotation;
@@ -690,127 +685,34 @@ namespace EnhancedFramework.Physics3D {
             if (_object is ICreatureMovable3DSpeedController _speed) {
                 speedController = _speed;
             }
-
-            if (_object is ICreatureMovable3DNavigationController _path) {
-                pathController = _path;
-            }
         }
 
         public override void UnregisterController<T>(T _object) {
-            base.UnregisterController<T>(_object);
+            base.UnregisterController(_object);
 
-            if ((_object is ICreatureMovable3DRotationController _rotation) && (rotationController == _rotation)) {
+            if ((_object is ICreatureMovable3DNavigationController _navigation) && navigationController.Equals(_navigation)) {
+                navigationController = DefaultMovable3DController.Instance;
+            }
+
+            if ((_object is ICreatureMovable3DRotationController _rotation) && rotationController.Equals(_rotation)) {
                 rotationController = DefaultMovable3DController.Instance;
             }
 
-            if ((_object is ICreatureMovable3DSpeedController _speed) && (speedController == _speed)) {
+            if ((_object is ICreatureMovable3DSpeedController _speed) && speedController.Equals(_speed)) {
                 speedController = DefaultMovable3DController.Instance;
             }
-
-            if ((_object is ICreatureMovable3DNavigationController _path) && (pathController == _path)) {
-                pathController = DefaultMovable3DController.Instance;
-            }
         }
         #endregion
 
-        #region Velocity
-        public override bool ResetVelocity() {
-            if (base.ResetVelocity()) {
-                return true;
-            }
-
-            ResetSpeed();
-            return false;
-        }
-
-        // -------------------------------------------
-        // Speed
-        // -------------------------------------------
-
-        /// <summary>
-        /// Updates this object speed, for this frame (increase or decrease).
-        /// </summary>
-        /// <returns><inheritdoc cref="Movable3D.Doc" path="/returns"/></returns>
-        protected virtual bool UpdateSpeed() {
-            if (speedController.OnUpdateSpeed()) {
-                return true;
-            }
-
-            // Update the speed depending on this frame movement.
-            Vector3 _movement = GetRelativeVector(Velocity.Movement + Velocity.InstantMovement).Flat();
-
-            if (_movement.IsNull()) {
-                DecreaseSpeed();
-            } else {
-                IncreaseSpeed();
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Increases this object speed.
-        /// </summary>
-        /// <returns><inheritdoc cref="Movable3D.Doc" path="/returns"/></returns>
-        public virtual bool IncreaseSpeed() {
-            if (speedController.OnIncreaseSpeed()) {
-                return true;
-            }
-
-            float _increase = DeltaTime;
-            if (!IsGrounded) {
-                _increase *= attributes.AirAccelCoef;
-            }
-
-            speed = attributes.MoveSpeed.EvaluateContinue(InstanceID, _increase);
-            return false;
-        }
-
-        /// <summary>
-        /// Decreases this object speed.
-        /// </summary>
-        /// <returns><inheritdoc cref="Movable3D.Doc" path="/returns"/></returns>
-        public virtual bool DecreaseSpeed() {
-            if (speedController.OnDecreaseSpeed()) {
-                return true;
-            }
-
-            speed = attributes.MoveSpeed.Decrease(InstanceID, DeltaTime);
-            return false;
-        }
-
-        /// <summary>
-        /// Resets this object speed.
-        /// </summary>
-        /// <returns><inheritdoc cref="Movable3D.Doc" path="/returns"/></returns>
-        public virtual bool ResetSpeed() {
-            if (speedController.OnResetSpeed()) {
-                return true;
-            }
-
-            speed = attributes.MoveSpeed.Reset(InstanceID);
-            return false;
-        }
-
-        // -----------------------
-
-        /// <summary>
-        /// Get this object speed ratio.
-        /// </summary>
-        public float GetSpeedRatio() {
-            return attributes.MoveSpeed.GetTimeRatio(InstanceID);
-        }
-
-        /// <summary>
-        /// Set this object speed ratio.
-        /// </summary>
-        public virtual void SetSpeedRatio(float _ratio) {
-            speed = attributes.MoveSpeed.EvaluatePercent(InstanceID, _ratio);
-        }
-        #endregion
+        // --- Advanced --- \\
 
         #region Navigation
         private const float PathDelay = .01f;
+
+        private Action setPathDelayDelegate = null;
+
+        private DelayHandler setPathDelay = default;
+        private PathHandler setPathBuffer = default;
 
         private Vector3 lastPathMovement = Vector3.zero;
         private PathHandler path = default;
@@ -890,23 +792,34 @@ namespace EnhancedFramework.Physics3D {
         /// Called when this object navigation path is set.
         /// </summary>
         /// <param name="_path">This object path.</param>
-        internal protected virtual PathHandler SetNavigationPath(PathHandler _path) {
+        internal PathHandler SetNavigationPath(PathHandler _path) {
+            setPathDelay.Cancel();
 
             // Use a delay in case the current path is being completed during the same frame.
             if (path.IsValid) {
-                Delayer.Call(PathDelay, SetPath, true);
+
+                setPathBuffer = _path;
+
+                setPathDelayDelegate ??= SetPathDelay;
+                setPathDelay = Delayer.Call(PathDelay, setPathDelayDelegate, true);
             } else {
-                SetPath();
+                SetPath(_path);
             }
 
             return _path;
 
             // ----- Local Methods ----- \\
 
-            void SetPath() {
+            void SetPathDelay() {
+                SetPath(setPathBuffer);
+                setPathBuffer = default;
+            }
+
+            void SetPath(PathHandler _path) {
+                CancelNavigation();
 
                 path = _path;
-                pathController.OnNavigateTo(_path);
+                navigationController.OnNavigateTo(_path);
             }
         }
 
@@ -917,22 +830,21 @@ namespace EnhancedFramework.Physics3D {
         /// </summary>
         /// <returns>Override: <inheritdoc cref="Movable3D.Doc" path="/returns"/>.
         /// <para/>Completed: True if the path should be completed, false otherwise.</returns>
-        internal protected virtual (bool _override, bool _completed) DoCompleteNavigation() {
-            var _result = pathController.CompletePath();
-
-            if (_result._override) {
-                return _result;
+        internal bool DoCompleteNavigation(out bool _completed) {
+            if (navigationController.CompletePath(out _completed)) {
+                return true;
             }
 
-            return (false, lastPathMovement.IsNull());
+            _completed = lastPathMovement.IsNull();
+            return false;
         }
 
         /// <summary>
         /// Called when this object navigation path is complete.
         /// </summary>
         /// <param name="_success">True if the navigation path was successfully completed, false if canceled.</param>
-        internal protected virtual void OnCompleteNavigation(bool _success) {
-            pathController.OnCompleteNavigation(_success);
+        internal void OnCompleteNavigation(bool _success) {
+            navigationController.OnCompleteNavigation(_success);
         }
         #endregion
 
@@ -940,15 +852,16 @@ namespace EnhancedFramework.Physics3D {
         private const float MinRotationAngle = PathRotationTurnAngle - .2f;
 
         private Action onTurnComplete = null;
+        private float turnTimeVar = 0f;
 
         // -----------------------
 
         /// <summary>
-        /// Turns this object on its Y axis, at a specific angle.
+        /// Turns this object on its Y axis by a given angle.
         /// </summary>
         /// <param name="_angleIncrement">Local rotation angle increment.</param>
         /// <returns><inheritdoc cref="Movable3D.Doc" path="/returns"/></returns>
-        public virtual bool Turn(float _angleIncrement, bool _withController = true) {
+        public bool Turn(float _angleIncrement, bool _withController = true) {
 
             if (_withController && rotationController.OnTurn(ref _angleIncrement)) {
                 return true;
@@ -1026,7 +939,8 @@ namespace EnhancedFramework.Physics3D {
         /// Resets this object current turn speed.
         /// </summary>
         public void ResetTurn() {
-            attributes.TurnSpeed.Reset(InstanceID);
+            attributes.TurnSpeed.Reset();
+            turnTimeVar = 0f;
         }
 
         // -------------------------------------------
@@ -1034,7 +948,7 @@ namespace EnhancedFramework.Physics3D {
         // -------------------------------------------
 
         /// <summary>
-        /// Updates this creature rotation.
+        /// Updates this object rotation.
         /// </summary>
         private void UpdateRotation() {
             if (forward.IsNull()) {
@@ -1054,7 +968,6 @@ namespace EnhancedFramework.Physics3D {
             float _forwardAngle = _angle;
             _angle = Mathf.MoveTowards(0f, _angle, GetTurnAngle(1f));
 
-
             // Do not increment if exact angle.
             bool _withController = true;
 
@@ -1066,7 +979,7 @@ namespace EnhancedFramework.Physics3D {
         }
 
         private float GetTurnAngle(float _coef) {
-            return attributes.TurnSpeed.EvaluateContinue(InstanceID, DeltaTime) * DeltaTime * _coef * 90f;
+            return attributes.TurnSpeed.EvaluateContinue(ref turnTimeVar, DeltaTime) * DeltaTime * _coef * 90f;
         }
 
         private float GetForwardAngle(Vector3 _forward) {
@@ -1085,8 +998,120 @@ namespace EnhancedFramework.Physics3D {
         }
         #endregion
 
+        // --- Velocity --- \\
+
+        #region Velocity
+        public override bool ResetVelocity() {
+            if (base.ResetVelocity()) {
+                return true;
+            }
+
+            ResetSpeed();
+            return false;
+        }
+        #endregion
+
+        #region Speed
+        private readonly DecreaseWrapper decreaseWrapper = new DecreaseWrapper();
+        private float speedTimeVar = 0f;
+
+        // -----------------------
+
+        /// <summary>
+        /// Updates this object speed, for this frame (increase or decrease).
+        /// </summary>
+        /// <returns><inheritdoc cref="Movable3D.Doc" path="/returns"/></returns>
+        private bool UpdateSpeed() {
+            if (speedController.OnUpdateSpeed()) {
+                return true;
+            }
+
+            // Update the speed depending on this frame movement.
+            Vector3 _movement = GetRelativeVector(Velocity.Movement + Velocity.InstantMovement).Flat();
+
+            if (_movement.IsNull()) {
+                DecreaseSpeed();
+            } else {
+                IncreaseSpeed();
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Increases this object speed.
+        /// </summary>
+        /// <returns><inheritdoc cref="Movable3D.Doc" path="/returns"/></returns>
+        public bool IncreaseSpeed() {
+            if (speedController.OnIncreaseSpeed()) {
+                return true;
+            }
+
+            float _increase = DeltaTime;
+            if (!IsGrounded) {
+                _increase *= attributes.AirAccelCoef;
+            }
+
+            speed = attributes.MoveSpeed.EvaluateContinue(ref speedTimeVar, _increase);
+            decreaseWrapper.Reset();
+
+            return false;
+        }
+
+        /// <summary>
+        /// Decreases this object speed.
+        /// </summary>
+        /// <returns><inheritdoc cref="Movable3D.Doc" path="/returns"/></returns>
+        public bool DecreaseSpeed() {
+            if (speedController.OnDecreaseSpeed()) {
+                return true;
+            }
+
+            speed = attributes.MoveSpeed.Decrease(ref speedTimeVar, DeltaTime, decreaseWrapper);
+            return false;
+        }
+
+        /// <summary>
+        /// Resets this object speed.
+        /// </summary>
+        /// <returns><inheritdoc cref="Movable3D.Doc" path="/returns"/></returns>
+        public bool ResetSpeed() {
+            if (speedController.OnResetSpeed()) {
+                return true;
+            }
+
+            speed = attributes.MoveSpeed.Reset();
+
+            decreaseWrapper.Reset();
+            speedTimeVar = 0f;
+
+            return false;
+        }
+
+        // -------------------------------------------
+        // Utility
+        // -------------------------------------------
+
+        /// <summary>
+        /// Get this object speed ratio.
+        /// </summary>
+        public float GetSpeedRatio() {
+            return attributes.MoveSpeed.GetTimeRatio(speedTimeVar);
+        }
+
+        /// <summary>
+        /// Set this object speed ratio.
+        /// </summary>
+        public void SetSpeedRatio(float _ratio) {
+            speed = attributes.MoveSpeed.EvaluatePercent(_ratio);
+            speedTimeVar = _ratio * attributes.MoveSpeed.Duration;
+        }
+        #endregion
+
+        // --- Collision --- \\
+
         #region Computation
-        private const float PathRotationTurnAngle = 1f;
+        private const float PathRotationTurnAngle = 2.5f;
 
         private const float PathStuckMagnitudeTolerance = .1f;
         private const float PathStuckMaxDuration = 1f;
@@ -1189,12 +1214,12 @@ namespace EnhancedFramework.Physics3D {
         #endregion
 
         #region Collision
-        protected override bool OnAppliedVelocity(FrameVelocity _velocity, CollisionData _data) {
+        protected override bool OnAppliedVelocity(FrameVelocity _velocity, CollisionData3D _data) {
             if (base.OnAppliedVelocity(_velocity, _data)) {
                 return true;
             }
 
-            // Path update.
+            // Path update - remove reference on complete.
             if (path.IsValid && !path.UpdatePath()) {
                 path = default;
             }

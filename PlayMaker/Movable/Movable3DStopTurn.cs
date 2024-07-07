@@ -37,7 +37,7 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
     /// </summary>
     [Tooltip("Stops the current turn operation of a Movable3D.")]
     [ActionCategory("Movable 3D")]
-    public class Movable3DStopTurn : BaseMovable3DStopTurn {
+    public sealed class Movable3DStopTurn : BaseMovable3DStopTurn {
         #region Global Members
         // -------------------------------------------
         // Movable

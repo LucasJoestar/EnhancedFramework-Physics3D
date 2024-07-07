@@ -35,9 +35,9 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
         public override void Reset() {
             base.Reset();
 
-            Velocity = null;
+            Velocity        = null;
             InstantVelocity = false;
-            EveryFrame = false;
+            EveryFrame      = false;
         }
 
         public override void OnEnter() {
@@ -77,7 +77,7 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
     /// </summary>
     [Tooltip("Adds a velocity to a Movable3D.")]
     [ActionCategory("Movable 3D")]
-    public class Movable3DAddVelocity : BaseMovable3DAddVelocity {
+    public sealed class Movable3DAddVelocity : BaseMovable3DAddVelocity {
         #region Global Members
         // -------------------------------------------
         // Movable

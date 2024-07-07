@@ -61,7 +61,7 @@ namespace EnhancedFramework.Physics3D.Timeline {
         /// <summary>
         /// <see cref="CreatureMovable3D"/> instance to use.
         /// </summary>
-        public virtual CreatureMovable3D Creature {
+        public virtual CreatureMovable3D Movable {
             get { return bindingObject; }
         }
         #endregion

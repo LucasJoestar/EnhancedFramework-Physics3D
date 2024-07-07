@@ -8,7 +8,7 @@ using EnhancedEditor;
 using EnhancedFramework.Core.Settings;
 using UnityEngine;
 
-using Min = EnhancedEditor.MinAttribute;
+using Min   = EnhancedEditor.MinAttribute;
 using Range = EnhancedEditor.RangeAttribute;
 
 namespace EnhancedFramework.Physics3D {
@@ -16,16 +16,21 @@ namespace EnhancedFramework.Physics3D {
     /// 3D Physics related global settings.
     /// </summary>
     [CreateAssetMenu(fileName = MenuPrefix + "Physics3DSettings", menuName = MenuPath + "Physics 3D", order = MenuOrder)]
-	public class Physics3DSettings : BaseSettings<Physics3DSettings> {
+	public sealed class Physics3DSettings : BaseSettings<Physics3DSettings> {
         #region Global Members
         [Section("Physics 3D Settings")]
+
+        [Tooltip("If true, checks for NaN values during collision calculs")]
+        public bool CheckForNAN = true;
+
+        [Space(10f), HorizontalLine(SuperColor.Grey, 1f), Space(10f)]
 
         [Enhanced, Max(0f)] public float Gravity    = -9.81f;
 
         [Tooltip("Maximum gravity velocity for an object")]
         [Enhanced, Max(0f)] public float MaxGravity = -25f;
 
-        [Space(5f)]
+        [Space(10f)]
 
         // -----------------------
 

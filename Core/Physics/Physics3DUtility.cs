@@ -4,8 +4,10 @@
 //
 // ============================================================================================ //
 
+using EnhancedEditor;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace EnhancedFramework.Physics3D {
@@ -13,50 +15,53 @@ namespace EnhancedFramework.Physics3D {
     /// Contains multiple 3D Physics related utility methods.
     /// </summary>
     public static class Physics3DUtility {
-        #region Raycast Hit Comparer
-        /// <summary>
-        /// <see cref="RaycastHit"/> comparer by distance.
-        /// </summary>
-        private class RaycastHitDistanceComparer : IComparer<RaycastHit> {
-            public static readonly RaycastHitDistanceComparer Default = new RaycastHitDistanceComparer();
-
-            public int Compare(RaycastHit _a, RaycastHit _b) {
-                return _a.distance.CompareTo(_b.distance);
-            }
-        }
-        #endregion
-
-        #region Collider Comparer
-        /// <summary>
-        /// Comparer for <see cref="Collider"/> by distance.
-        /// </summary>
-        private class ColliderDistanceComparer : IComparer<Collider> {
-            private static readonly ColliderDistanceComparer comparer = new ColliderDistanceComparer();
-            private static Vector3 reference = Vector3.zero;
-
-            public static ColliderDistanceComparer GetComparer(Vector3 _reference) {
-                reference = _reference;
-                return comparer;
-            }
-
-            public int Compare(Collider _a, Collider _b) {
-                return (_a.transform.position - reference).sqrMagnitude.CompareTo((_b.transform.position - reference).sqrMagnitude);
-            }
-        }
-        #endregion
-
         #region Raycast Hit
+        private static readonly List<RaycastHit> raycastHitBuffer = new List<RaycastHit>();
+        private static readonly Comparison<RaycastHit> raycastHitComparison = CompareRaycastHits;
+
+        // -----------------------
+
         /// <summary>
         /// Sort an array of <see cref="RaycastHit"/> by their distance.
         /// </summary>
         /// <param name="_hits">Hits to sort.</param>
         /// <param name="_count">Total count of hits to sort.</param>
         public static void SortRaycastHitByDistance(RaycastHit[] _hits, int _count) {
-            Array.Sort(_hits, 0, _count, RaycastHitDistanceComparer.Default);
+
+            List<RaycastHit> _buffer = raycastHitBuffer;
+
+            // Use List.Sort instead of Array.Sort to avoid any memory allocation.
+            _buffer.Resize(_count);
+            for (int i = 0; i < _count; i++) {
+                _buffer[i] = _hits[i];
+            }
+
+            SortRaycastHitByDistance(_buffer);
+
+            // Update array content.
+            _buffer.CopyTo(0, _hits, 0, _count);
+        }
+
+        /// <inheritdoc cref="SortRaycastHitByDistance(RaycastHit[], int)"/>
+        public static void SortRaycastHitByDistance(List<RaycastHit> _hits) {
+            _hits.Sort(raycastHitComparison);
+        }
+
+        // -----------------------
+
+        private static int CompareRaycastHits(RaycastHit a, RaycastHit b) {
+            return a.distance.CompareTo(b.distance);
         }
         #endregion
 
         #region Collider
+        private static readonly List<Collider> colliderBuffer = new List<Collider>();
+        private static readonly Comparison<Collider> colliderComparison = CompareColliders;
+
+        private static Vector3 reference = Vector3.zero;
+
+        // -----------------------
+
         /// <summary>
         /// Sort an array of <see cref="Collider"/> by their distance from a reference <see cref="Vector3"/>.
         /// </summary>
@@ -64,7 +69,31 @@ namespace EnhancedFramework.Physics3D {
         /// <param name="_count">Total count of colliders to sort.</param>
         /// <param name="_reference">Reference position used for sorting.</param>
         public static void SortCollidersByDistance(Collider[] _colliders, int _count, Vector3 _reference) {
-            Array.Sort(_colliders, 0, _count, ColliderDistanceComparer.GetComparer(_reference));
+
+            List<Collider> _buffer = colliderBuffer;
+
+            // Use List.Sort instead of Array.Sort to avoid any memory allocation.
+            _buffer.Resize(_count);
+            for (int i = 0; i < _count; i++) {
+                _buffer[i] = _colliders[i];
+            }
+
+            SortCollidersByDistance(_buffer, reference);
+
+            // Update array content.
+            _buffer.CopyTo(0, _colliders, 0, _count);
+        }
+
+        /// <inheritdoc cref="SortCollidersByDistance(Collider[], int, Vector3)"/>
+        public static void SortCollidersByDistance(List<Collider> _colliders, Vector3 _reference) {
+            reference = _reference;
+            _colliders.Sort(colliderComparison);
+        }
+
+        // -----------------------
+
+        static int CompareColliders(Collider a, Collider b) {
+            return (a.transform.position - reference).sqrMagnitude.CompareTo((b.transform.position - reference).sqrMagnitude);
         }
         #endregion
 
@@ -73,9 +102,9 @@ namespace EnhancedFramework.Physics3D {
         /// Get the collision layer mask that indicates which layer(s) the specified <see cref="GameObject"/> can collide with.
         /// </summary>
         /// <param name="_gameObject">The <see cref="GameObject"/> to retrieve the collision layer mask for.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int GetLayerCollisionMask(GameObject _gameObject) {
-            int _layer = _gameObject.layer;
-            return GetLayerCollisionMask(_layer);
+            return GetLayerCollisionMask(_gameObject.layer);
         }
 
         /// <summary>
@@ -94,10 +123,34 @@ namespace EnhancedFramework.Physics3D {
         #endregion
 
         #region Utility
+        /// <summary>
+        /// Physics related default contact offset.
+        /// </summary>
+        public static float ContactOffset {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get { return Physics.defaultContactOffset; }
+        }
+
+        // -----------------------
+
         /// <inheritdoc cref="IsGroundSurface(Collider, Vector3, Vector3)"/>
         /// <param name="_hit">Hit result of the surface to stand on.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsGroundSurface(RaycastHit _hit, Vector3 _up) {
             return IsGroundSurface(_hit.collider, _hit.normal, _up);
+        }
+
+        /// <inheritdoc cref="IsGroundAngle(Collider, Vector3, Vector3, out bool)"/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsGroundSurface(Collider _collider, Vector3 _normal, Vector3 _up) {
+            bool isGroundAngle = IsGroundAngle(_collider, _normal, _up, out bool _isGroundSurface);
+            return isGroundAngle && _isGroundSurface;
+        }
+
+        /// <inheritdoc cref="IsGroundAngle(Collider, Vector3, Vector3, out bool)"/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsGroundAngle(RaycastHit _hit, Vector3 _up, out bool _isGroundSurface) {
+            return IsGroundAngle(_hit.collider, _hit.normal, _up, out _isGroundSurface);
         }
 
         /// <summary>
@@ -106,9 +159,23 @@ namespace EnhancedFramework.Physics3D {
         /// <param name="_collider">Collider attached to the testing surface.</param>
         /// <param name="_normal">The normal surface to check.</param>
         /// <param name="_up">Referential up vector of the object to stand on the surface.</param>
-        public static bool IsGroundSurface(Collider _collider, Vector3 _normal, Vector3 _up) {
+        /// <param name="_isGroundSurface">True if this collider has the <see cref="GroundSurface"/> component, false otherwise.</param>
+        /// <returns>True if this surface angle can be considered as ground, false otherwise.</returns>
+        public static bool IsGroundAngle(Collider _collider, Vector3 _normal, Vector3 _up, out bool _isGroundSurface) {
             float _angle = Vector3.Angle(_normal, _up);
-            return (_angle <= Physics3DSettings.I.GroundAngle) && !_collider.TryGetComponent<NonGroundSurface3D>(out _);
+            _isGroundSurface = IsGroundSurface(_collider);
+
+            return _angle <= Physics3DSettings.I.GroundAngle;
+        }
+
+        /// <summary>
+        /// Gat if a specific <see cref="Collider"/> can be considered as a ground surface.
+        /// </summary>
+        /// <param name="collider">The collider to check.</param>
+        /// <returns>True if this collider can be considered as a ground surface, false otherwise.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsGroundSurface(Collider _collider) {
+            return !_collider.TryGetComponent<NonGroundSurface3D>(out _);
         }
         #endregion
     }

@@ -4,7 +4,7 @@
 //
 // ============================================================================================ //
 
-using EnhancedFramework.Core;
+using EnhancedEditor;
 using HutongGames.PlayMaker;
 using UnityEngine;
 
@@ -39,10 +39,10 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
         public override void Reset() {
             base.Reset();
 
-            Position = null;
-            UseRotation = true;
+            Position     = null;
+            UseRotation  = true;
             SuccessEvent = null;
-            FailEvent = null;
+            FailEvent    = null;
         }
 
         public override void OnEnter() {
@@ -77,7 +77,7 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
     /// </summary>
     [Tooltip("Makes a Movable3D navigate to a position.")]
     [ActionCategory("Movable 3D")]
-    public class Movable3DNavigateTo : BaseMovable3DNavigateTo {
+    public sealed class Movable3DNavigateTo : BaseMovable3DNavigateTo {
         #region Global Members
         // -------------------------------------------
         //  Movable

@@ -16,7 +16,7 @@ namespace EnhancedFramework.Physics3D {
     [ScriptGizmos(false, true)]
     [RequireComponent(typeof(EnhancedAnimatorHandler))]
     [AddComponentMenu(FrameworkUtility.MenuPath + "Physics 3D/Movable 3D Root Motion"), DisallowMultipleComponent]
-    public class Movable3DRootMotion : EnhancedBehaviour {
+    public sealed class Movable3DRootMotion : EnhancedBehaviour {
         #region Global Members
         [Section("Root Motion")]
 
@@ -32,11 +32,11 @@ namespace EnhancedFramework.Physics3D {
             UpdateRootMotion();
         }
 
+        #if UNITY_EDITOR
         // -------------------------------------------
         // Editor
         // -------------------------------------------
 
-        #if UNITY_EDITOR
         protected override void OnValidate() {
             base.OnValidate();
 
@@ -48,7 +48,7 @@ namespace EnhancedFramework.Physics3D {
                 movable = GetComponentInParent<Movable3D>();
             }
         }
-#endif
+        #endif
         #endregion
 
         #region Root Motion
@@ -77,11 +77,10 @@ namespace EnhancedFramework.Physics3D {
                 int _currentHash    = _currentInfo.shortNameHash;
                 int _nextHash       = _nextInfo.shortNameHash;
 
-                EnhancedAnimatorState _current;
                 EnhancedAnimatorState _next;
 
                 // Identify the active states.
-                if (_layer.GetState(_currentHash, out _current) && _current.RootMotion) {
+                if (_layer.GetState(_currentHash, out EnhancedAnimatorState _current) && _current.RootMotion) {
 
                     // Current state is enabled - determine next state.
                     if (!_layer.GetState(_nextHash, out _next) || _next.RootMotion) {
@@ -110,7 +109,7 @@ namespace EnhancedFramework.Physics3D {
         /// <param name="_next">Next motion state.</param>
         private void PerformRootMotion(Animator _animator, EnhancedAnimatorState _current, EnhancedAnimatorState _next) {
 
-            Vector3 _positionMotion = _animator.deltaPosition.RotateInverse(movable.Transform.rotation);
+            Vector3 _positionMotion    = _animator.deltaPosition.RotateInverse(movable.Transform.rotation);
             Quaternion _rotationMotion = _animator.deltaRotation;
 
             _current.ApplyMotion(_next, ref _positionMotion, ref _rotationMotion);

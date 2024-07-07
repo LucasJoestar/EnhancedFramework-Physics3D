@@ -20,11 +20,11 @@ namespace EnhancedFramework.Physics3D {
     public interface IMovable3DColliderController {
         /// <inheritdoc cref="Movable3D.GetColliderMask"/>
         /// <returns>-1 to use the movable default collision mask implementation, otherwise the collision mask to be used.</returns>
-        int GetColliderMask(Collider _collider);
+        int InitColliderMask(Collider _collider);
 
         /// <inheritdoc cref="Movable3D.GetTriggerMask"/>
-        /// <returns><inheritdoc cref="GetColliderMask(Collider)" path="/returns"/></returns>
-        int GetTriggerMask(Collider _trigger);
+        /// <returns><inheritdoc cref="InitColliderMask(Collider)" path="/returns"/></returns>
+        int InitTriggerMask(Collider _trigger);
     }
 
     /// <summary>
@@ -60,7 +60,7 @@ namespace EnhancedFramework.Physics3D {
         bool OnPreComputeVelocity();
 
         /// <param name="_velocity">Actual velocity of the object</param>
-        /// <param name="_frameVelocity"><inheritdoc cref="Movable3D.ComputeVelocity()" path="/returns"/></param>
+        /// <param name="_frameVelocity"><inheritdoc cref="Movable3D.ComputeVelocity" path="/returns"/></param>
         /// <inheritdoc cref="Movable3D.ComputeVelocity"/>
         bool OnComputeVelocity(Velocity _velocity, ref FrameVelocity _frameVelocity);
 
@@ -72,23 +72,23 @@ namespace EnhancedFramework.Physics3D {
     /// Controller for a <see cref="Movable3D"/> collisions.
     /// </summary>
     public interface IMovable3DCollisionController {
-        /// <inheritdoc cref="Movable3D.CollisionType"/>
-        CollisionSystem3DType CollisionType { get; }
-
         /// <inheritdoc cref="Movable3D.SetGroundState(bool, RaycastHit)"/>
         bool OnSetGroundState(ref bool _isGrounded, RaycastHit _hit);
 
-        /// <inheritdoc cref="Movable3D.OnAppliedVelocity(FrameVelocity, CollisionData)"/>
-        bool OnAppliedVelocity(ref FrameVelocity _velocity, CollisionData _data);
+        /// <inheritdoc cref="Movable3D.OnAppliedVelocity(FrameVelocity, CollisionData3D)"/>
+        bool OnAppliedVelocity(ref FrameVelocity _velocity, CollisionData3D _data);
 
-        /// <inheritdoc cref="Movable3D.OnRefreshedObject(FrameVelocity, CollisionData)"/>
-        bool OnRefreshedObject(ref FrameVelocity _velocity, CollisionData _data);
+        /// <inheritdoc cref="Movable3D.OnRefreshedObject(FrameVelocity, CollisionData3D)"/>
+        bool OnRefreshedObject(ref FrameVelocity _velocity, CollisionData3D _data);
 
         /// <inheritdoc cref="Movable3D.OnGrounded(bool)"/>
         bool OnGrounded(bool _isGrounded);
 
         /// <inheritdoc cref="Movable3D.OnExtractFromCollider(Collider, Vector3, float)"/>
         bool OnExtractFromCollider(Collider _collider, Vector3 _direction, float _distance);
+
+        /// <inheritdoc cref="Movable3D.OnHitByMovable(Movable3D, Collider, Collider)"/>
+        bool OnHitByMovable(Movable3D _other, Collider _otherCollider, Collider _thisCollider);
     }
 
     /// <summary>
@@ -107,7 +107,7 @@ namespace EnhancedFramework.Physics3D {
     // -------------------------------------------
 
     /// <summary>
-    /// Controller for a <see cref="CreatureMovable3D"/> speed.
+    /// Controller for an <see cref="CreatureMovable3D"/> speed.
     /// </summary>
     public interface ICreatureMovable3DSpeedController {
         /// <inheritdoc cref="CreatureMovable3D.UpdateSpeed"/>
@@ -124,10 +124,10 @@ namespace EnhancedFramework.Physics3D {
     }
 
     /// <summary>
-    /// Controller for a <see cref="CreatureMovable3D"/> rotation.
+    /// Controller for an <see cref="CreatureMovable3D"/> rotation.
     /// </summary>
     public interface ICreatureMovable3DRotationController {
-        /// <inheritdoc cref="CreatureMovable3D.Turn(float)"/>
+        /// <inheritdoc cref="CreatureMovable3D.Turn(float, bool)"/>
         bool OnTurn(ref float _angleIncrement);
 
         /// <inheritdoc cref="CreatureMovable3D.TurnTo(Vector3, Action)"/>
@@ -137,11 +137,11 @@ namespace EnhancedFramework.Physics3D {
         void OnCompleteTurnTo(bool _reset);
     }
 
-    /// Controller for a <see cref="CreatureMovable3D"/> navigation path callbacks.
+    /// Controller for an <see cref="CreatureMovable3D"/> navigation path callbacks.
     /// </summary>
     public interface ICreatureMovable3DNavigationController {
-        /// <inheritdoc cref="CreatureMovable3D.DoCompleteNavigation()"/>
-        (bool _override, bool _completed) CompletePath();
+        /// <inheritdoc cref="CreatureMovable3D.DoCompleteNavigation(out bool)"/>
+        bool CompletePath(out bool _completed);
 
         /// <inheritdoc cref="CreatureMovable3D.SetNavigationPath(PathHandler)"/>
         void OnNavigateTo(PathHandler _path);
@@ -154,9 +154,9 @@ namespace EnhancedFramework.Physics3D {
     /// <summary>
     /// Default controller used when no other controller is specified.
     /// </summary>
-    internal class DefaultMovable3DController : IMovable3DColliderController, IMovable3DVelocityController, IMovable3DUpdateController,
-                                                IMovable3DComputationController, IMovable3DCollisionController, IMovable3DTriggerController,
-                                                ICreatureMovable3DSpeedController, ICreatureMovable3DRotationController, ICreatureMovable3DNavigationController {
+    internal sealed class DefaultMovable3DController : IMovable3DColliderController,      IMovable3DVelocityController,         IMovable3DUpdateController,
+                                                       IMovable3DComputationController,   IMovable3DCollisionController,        IMovable3DTriggerController,
+                                                       ICreatureMovable3DSpeedController, ICreatureMovable3DRotationController, ICreatureMovable3DNavigationController {
         #region Instance
         /// <summary>
         /// Static instance of this class.
@@ -201,17 +201,11 @@ namespace EnhancedFramework.Physics3D {
         #endregion
 
         #region Collision
-        public CollisionSystem3DType CollisionType {
-            get { return CollisionSystem3DType.Simple; }
-        }
-
-        // -----------------------
-
-        public bool OnAppliedVelocity(ref FrameVelocity _velocity, CollisionData _data) {
+        public bool OnAppliedVelocity(ref FrameVelocity _velocity, CollisionData3D _data) {
             return false;
         }
 
-        public bool OnRefreshedObject(ref FrameVelocity _velocity, CollisionData _data) {
+        public bool OnRefreshedObject(ref FrameVelocity _velocity, CollisionData3D _data) {
             return false;
         }
 
@@ -226,14 +220,18 @@ namespace EnhancedFramework.Physics3D {
         public bool OnExtractFromCollider(Collider _collider, Vector3 _direction, float _distance) {
             return false;
         }
+
+        public bool OnHitByMovable(Movable3D _other, Collider _otherCollider, Collider _thisCollider) {
+            return false;
+        }
         #endregion
 
         #region Collider
-        public int GetColliderMask(Collider _collider) {
+        public int InitColliderMask(Collider _collider) {
             return -1;
         }
 
-        public int GetTriggerMask(Collider _collider) {
+        public int InitTriggerMask(Collider _collider) {
             return -1;
         }
         #endregion
@@ -277,8 +275,9 @@ namespace EnhancedFramework.Physics3D {
         #endregion
 
         #region Navigation
-        public (bool _override, bool _completed) CompletePath() {
-            return (false, false);
+        public bool CompletePath(out bool _completed) {
+            _completed = false;
+            return false;
         }
 
         public void OnNavigateTo(PathHandler _path) { }

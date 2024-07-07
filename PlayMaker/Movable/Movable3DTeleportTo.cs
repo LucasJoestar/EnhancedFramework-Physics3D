@@ -4,7 +4,7 @@
 //
 // ============================================================================================ //
 
-using EnhancedFramework.Core;
+using EnhancedEditor;
 using HutongGames.PlayMaker;
 using UnityEngine;
 
@@ -56,7 +56,7 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
     /// </summary>
     [Tooltip("Teleports a Movable3D to a specific position in space.")]
     [ActionCategory("Movable 3D")]
-    public class Movable3DTeleportTo : BaseMovable3DTeleportTo {
+    public sealed class Movable3DTeleportTo : BaseMovable3DTeleportTo {
         #region Global Members
         // -------------------------------------------
         // Position - Movable

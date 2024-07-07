@@ -5,7 +5,6 @@
 // ============================================================================================ //
 
 using EnhancedEditor;
-using EnhancedFramework.Core;
 using System;
 using System.ComponentModel;
 using UnityEngine;
@@ -81,8 +80,8 @@ namespace EnhancedFramework.Physics3D.Timeline {
 
                 // Preview origin.
                 if (fromPosition.IsNull()) {
-                    fromPosition = Creature.transform.position;
-                    fromRotation = Creature.transform.rotation;
+                    fromPosition = Movable.transform.position;
+                    fromRotation = Movable.transform.rotation;
                 }
 
                 return;
@@ -90,7 +89,7 @@ namespace EnhancedFramework.Physics3D.Timeline {
             #endif
 
             // Navigate.
-            navigationPath = Creature.NavigateTo(Position, UseRotation);
+            navigationPath = Movable.NavigateTo(Position, UseRotation);
         }
 
         public override void ProcessFrame(Playable _playable, FrameData _info, object _playerData) {
@@ -104,13 +103,12 @@ namespace EnhancedFramework.Physics3D.Timeline {
             if (!Application.isPlaying) {
 
                 // Navigation preview.
-                Vector3 _position = Vector3.Lerp(fromPosition, Position.position, GetNormalizedTime(_playable));
+                Vector3 _position    = Vector3.Lerp(fromPosition, Position.position, GetNormalizedTime(_playable));
                 Quaternion _rotation = UseRotation
                                      ? Quaternion.Lerp(fromRotation, Position.rotation, GetNormalizedTime(_playable))
                                      : fromRotation;
 
-                Creature.SetPositionAndRotation(_position, _rotation);
-
+                Movable.SetPositionAndRotation(_position, _rotation);
                 return;
             }
             #endif
@@ -131,9 +129,9 @@ namespace EnhancedFramework.Physics3D.Timeline {
                 Quaternion _rotation    = _completed ? Position.rotation : fromRotation;
 
                 if (UseRotation) {
-                    Creature.SetPositionAndRotation(_position, _rotation);
+                    Movable.SetPositionAndRotation(_position, _rotation);
                 } else {
-                    Creature.SetPosition(_position);
+                    Movable.SetPosition(_position);
                 }
 
                 return;
@@ -154,7 +152,7 @@ namespace EnhancedFramework.Physics3D.Timeline {
         /// Get if this clip is valid.
         /// </summary>
         public bool IsValid() {
-            return (Creature != null) && (Position != null);
+            return (Movable != null) && (Position != null);
         }
         #endregion
     }

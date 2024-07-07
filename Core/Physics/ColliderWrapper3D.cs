@@ -16,12 +16,23 @@ namespace EnhancedFramework.Physics3D {
     /// </summary>
 	internal abstract class ColliderWrapper3D {
         #region Global Members
-        protected readonly Transform transform = null;
+        private static readonly CapsuleColliderWrapper3D capsuleWrapper = new CapsuleColliderWrapper3D(null);
+        private static readonly SphereColliderWrapper3D sphereWrapper   = new SphereColliderWrapper3D(null);
+        private static readonly BoxColliderWrapper3D boxWrapper         = new BoxColliderWrapper3D(null);
 
-        // -----------------------
+        protected Transform transform = null;
+
+        /// <summary>
+        /// <see cref="UnityEngine.Collider"/> of this object.
+        /// </summary>
+        public abstract Collider Collider { get; set; }
+
+        // -------------------------------------------
+        // Constructor(s)
+        // -------------------------------------------
 
         protected ColliderWrapper3D(Collider _collider) {
-            transform = _collider.transform;
+            transform = _collider.IsValid() ? _collider.transform : null;
         }
 
         // -------------------------------------------
@@ -48,6 +59,30 @@ namespace EnhancedFramework.Physics3D {
                     throw new NonPrimitiveColliderException();
             }
         }
+
+        /// <summary>
+        /// Get a temporary appropriated <see cref="ColliderWrapper"/> for a specific collider.
+        /// </summary>
+        /// <param name="collider">Collider to get a temporary wrapper for.</param>
+        /// <returns>Configured wrapper for the specified collider.</returns>
+        public static ColliderWrapper3D Get(Collider collider) {
+            switch (collider) {
+                case BoxCollider box:
+                    boxWrapper.Collider = box;
+                    return boxWrapper;
+
+                case CapsuleCollider capsule:
+                    capsuleWrapper.Collider = capsule;
+                    return capsuleWrapper;
+
+                case SphereCollider sphere:
+                    sphereWrapper.Collider = sphere;
+                    return sphereWrapper;
+
+                default:
+                    throw new NonPrimitiveColliderException();
+            }
+        }
         #endregion
 
         #region Physics
@@ -55,6 +90,11 @@ namespace EnhancedFramework.Physics3D {
         /// Performs a raycast from this collider using specific parameters.
         /// </summary>
         public abstract bool Raycast(Vector3 _direction, out RaycastHit _hit, float _distance, int _mask, QueryTriggerInteraction _triggerInteraction);
+
+        /// <summary>
+        /// Performs a raycast from this collider using specific parameters.
+        /// </summary>
+        public abstract int RaycastAll(Vector3 _direction, RaycastHit[] _buffer, float _distance, int _mask, QueryTriggerInteraction _triggerInteraction);
 
         /// <summary>
         /// Performs a cast from this collider using specific parameters.
@@ -69,6 +109,20 @@ namespace EnhancedFramework.Physics3D {
 
         #region Utility
         /// <summary>
+        /// Get this collider world-space non rotated bounds.
+        /// </summary>
+        public Bounds GetBounds() {
+            return new Bounds(GetCenter(), GetExtents() * 2f);
+        }
+
+        /// <summary>
+        /// Get this collider world-space center position.
+        /// </summary>
+        public virtual Vector3 GetCenter() {
+            return Collider.bounds.center;
+        }
+
+        /// <summary>
         /// Get this collider world-space non-rotated extents.
         /// </summary>
         public abstract Vector3 GetExtents();
@@ -82,91 +136,171 @@ namespace EnhancedFramework.Physics3D {
         #endregion
     }
 
-    internal class BoxColliderWrapper3D : ColliderWrapper3D {
+    internal sealed class BoxColliderWrapper3D : ColliderWrapper3D {
         #region Global Members
-        public readonly BoxCollider Collider = null;
+        private BoxCollider collider = null;
 
-        // -----------------------
+        public override Collider Collider {
+            get { return collider; }
+            set {
+                if (value is not BoxCollider _box)
+                    throw new InvalidColliderException($"Collider must be of type {typeof(BoxCollider).Name}");
+
+                collider  = _box;
+                transform = collider.transform;
+            }
+        }
+
+        // -------------------------------------------
+        // Constructor(s)
+        // -------------------------------------------
 
         public BoxColliderWrapper3D(BoxCollider _collider) : base(_collider) {
-            Collider = _collider;
+            collider = _collider;
         }
         #endregion
 
         #region Physics
         public override bool Raycast(Vector3 _direction, out RaycastHit _hit, float _distance, int _mask, QueryTriggerInteraction _triggerInteraction) {
-            Vector3 _offset = transform.rotation * Vector3.Scale(_direction, GetExtents());
-            return Physics.Raycast(Collider.bounds.center + _offset, _direction.normalized, out _hit, _distance, _mask, _triggerInteraction);
+            _direction.Normalize();
+
+            Vector3 _offset = Vector3.Scale(_direction, GetExtents()).Rotate(transform.rotation);
+            Vector3 _center = GetCenter();
+
+            return Physics.Raycast(_center + _offset, _direction, out _hit, _distance, _mask, _triggerInteraction);
+        }
+
+        public override int RaycastAll(Vector3 _direction, RaycastHit[] _buffer, float _distance, int _mask, QueryTriggerInteraction _triggerInteraction) {
+            _direction.Normalize();
+
+            Vector3 _offset = Vector3.Scale(_direction, GetExtents()).Rotate(transform.rotation);
+            Vector3 _center = GetCenter();
+
+            return Physics.RaycastNonAlloc(_center + _offset, _direction, _buffer, _distance, _mask, _triggerInteraction);
         }
 
         public override int Cast(Vector3 _direction, RaycastHit[] _buffer, float _distance, int _mask, QueryTriggerInteraction _triggerInteraction) {
-            Vector3 _extents = GetExtents() - Physics.defaultContactOffset.ToVector3();
-            return Physics.BoxCastNonAlloc(Collider.bounds.center, _extents, _direction.normalized, _buffer, transform.rotation, _distance, _mask, _triggerInteraction);
+            _direction.Normalize();
+
+            Vector3 _extents = GetExtents() - Physics3DUtility.ContactOffset.ToVector3();
+            Vector3 _center  = GetCenter();
+
+            return Physics.BoxCastNonAlloc(_center, _extents, _direction, _buffer, transform.rotation, _distance, _mask, _triggerInteraction);
         }
 
         public override int Overlap(Collider[] _buffer, int _mask, QueryTriggerInteraction _triggerInteraction) {
-            return Physics.OverlapBoxNonAlloc(Collider.bounds.center, GetExtents(), _buffer, transform.rotation, _mask, _triggerInteraction);
+            Vector3 _extents = GetExtents();
+            Vector3 _center  = GetCenter();
+
+            return Physics.OverlapBoxNonAlloc(_center, _extents, _buffer, transform.rotation, _mask, _triggerInteraction);
         }
         #endregion
 
         #region Utility
         public override Vector3 GetExtents() {
-            return transform.TransformVector(Collider.size * .5f);
+            // Get the non-oriented extents value of this collider, as oriented values
+            // may be negative, and cause error if used as is and as in absolute values.
+            Vector3 _extents = transform.TransformVector(collider.size * .5f).RotateInverse(transform.rotation);
+
+            // Negative size causes the whole Physics system to badly breaks out.
+            // For the sake of security, just make sure it won't happen.
+            _extents.x = Mathf.Abs(_extents.x);
+            _extents.y = Mathf.Abs(_extents.y);
+            _extents.z = Mathf.Abs(_extents.z);
+
+            return _extents;
         }
 
         public override void SetBounds(Vector3 _center, Vector3 _size) {
-            Collider.center = _center;
-            Collider.size = _size;
+            _center = transform.InverseTransformPoint(_center);
+            _size   = transform.InverseTransformVector(_size);
+
+            collider.center = _center;
+
+            // Negative size causes the whole Physics system to badly breaks out.
+            // For the sake of security, just make sure it won't happen.
+            _size.x = Mathf.Abs(_size.x);
+            _size.y = Mathf.Abs(_size.y);
+            _size.z = Mathf.Abs(_size.z);
+
+            collider.size = _size;
         }
         #endregion
     }
 
-    internal class CapsuleColliderWrapper3D : ColliderWrapper3D {
+    internal sealed class CapsuleColliderWrapper3D : ColliderWrapper3D {
         #region Global Members
-        public readonly CapsuleCollider Collider = null;
+        private CapsuleCollider collider = null;
 
-        // -----------------------
+        public override Collider Collider {
+            get { return collider; }
+            set {
+                if (value is not CapsuleCollider _capsule)
+                    throw new InvalidColliderException($"Collider must be of type {typeof(CapsuleCollider).Name}");
+
+                collider = _capsule;
+                transform = collider.transform;
+            }
+        }
+
+        // -------------------------------------------
+        // Constructor(s)
+        // -------------------------------------------
 
         public CapsuleColliderWrapper3D(CapsuleCollider _collider) : base(_collider) {
-            Collider = _collider;
+            collider = _collider;
         }
         #endregion
 
         #region Physics
         public override bool Raycast(Vector3 _direction, out RaycastHit _hit, float _distance, int _mask, QueryTriggerInteraction _triggerInteraction) {
             // Update position.
-            Collider.transform.position = Collider.attachedRigidbody.position;
+            collider.transform.position = collider.attachedRigidbody.position;
             _direction.Normalize();
 
-            float _contactOffset = Physics.defaultContactOffset;
-            Vector3 _position = Collider.ClosestPoint(Collider.bounds.center + (_direction * Collider.height)) - (_direction * _contactOffset);
+            float _contactOffset = Physics3DUtility.ContactOffset;
+            Vector3 _position = collider.ClosestPoint(GetCenter() + (_direction * GetHeight(true))) - (_direction * _contactOffset);
 
             return Physics.Raycast(_position, _direction, out _hit, _distance + _contactOffset, _mask, _triggerInteraction);
         }
 
-        public override int Cast(Vector3 _velocity, RaycastHit[] _buffer, float _distance, int _mask, QueryTriggerInteraction _triggerInteraction) {
-            Vector3 _offset = GetPointOffset();
-            Vector3 _center = Collider.bounds.center;
-            float _radius = Collider.radius - Physics.defaultContactOffset;
+        public override int RaycastAll(Vector3 _direction, RaycastHit[] _buffer, float _distance, int _mask, QueryTriggerInteraction _triggerInteraction) {
+            // Update position.
+            collider.transform.position = collider.attachedRigidbody.position;
+            _direction.Normalize();
 
-            return Physics.CapsuleCastNonAlloc(_center - _offset, _center + _offset, _radius, _velocity.normalized, _buffer, _distance, _mask, _triggerInteraction);
+            float _contactOffset = Physics3DUtility.ContactOffset;
+            Vector3 _position    = collider.ClosestPoint(GetCenter() + (_direction * GetHeight(true))) - (_direction * _contactOffset);
+
+            return Physics.RaycastNonAlloc(_position, _direction, _buffer, _distance, _mask, _triggerInteraction);
+        }
+
+        public override int Cast(Vector3 _velocity, RaycastHit[] _buffer, float _distance, int _mask, QueryTriggerInteraction _triggerInteraction) {
+            _velocity.Normalize();
+
+            Vector3 _offset = GetPointOffset();
+            Vector3 _center = GetCenter();
+            float _radius   = GetRadius(true) - Physics3DUtility.ContactOffset;
+
+            return Physics.CapsuleCastNonAlloc(_center - _offset, _center + _offset, _radius, _velocity, _buffer, _distance, _mask, _triggerInteraction);
         }
 
         public override int Overlap(Collider[] _buffer, int _mask, QueryTriggerInteraction _triggerInteraction) {
             Vector3 _offset = GetPointOffset();
-            Vector3 _center = Collider.bounds.center;
+            Vector3 _center = GetCenter();
+            float _radius   = GetRadius(true);
 
-            return Physics.OverlapCapsuleNonAlloc(_center - _offset, _center + _offset, Collider.radius, _buffer, _mask, _triggerInteraction);
+            return Physics.OverlapCapsuleNonAlloc(_center - _offset, _center + _offset, _radius, _buffer, _mask, _triggerInteraction);
         }
         #endregion
 
         #region Utility
         public override Vector3 GetExtents() {
-            float _radius = Collider.radius;
-            float _height = Collider.height * .5f;
+            float _radius = GetRadius(false);
+            float _height = GetHeight(false) * .5f;
             Vector3 _extents;
 
-            switch (Collider.direction) {
+            switch (collider.direction) {
                 // X axis.
                 case 0:
                     _extents = new Vector3(_height, _radius, _radius);
@@ -190,18 +324,21 @@ namespace EnhancedFramework.Physics3D {
             return transform.TransformVector(_extents);
         }
 
-        public override void SetBounds(Vector3 _center, Vector3 _size) {
-            Collider.center = _center;
+        public override void SetBounds(Vector3 center, Vector3 size) {
+            center = transform.InverseTransformPoint(center);
+            size   = transform.InverseTransformVector(size);
 
-            Collider.radius = _size.x;
-            Collider.height = _size.y;
+            collider.center = center;
+
+            collider.radius = Mathf.Abs(size.x * .5f);
+            collider.height = Mathf.Abs(size.y);
         }
 
         public Vector3 GetPointOffset() {
-            float _height = (Collider.height * .5f) - Collider.radius;
+            float _height = (GetHeight(false) * .5f) - GetRadius(false);
             Vector3 _offset;
 
-            switch (Collider.direction) {
+            switch (collider.direction) {
                 // X axis.
                 case 0:
                     _offset = new Vector3(_height, 0f, 0f);
@@ -224,17 +361,106 @@ namespace EnhancedFramework.Physics3D {
 
             return transform.TransformVector(_offset);
         }
+
+        /// <summary>
+        /// Get the radius of this <see cref="CapsuleCollider"/>.
+        /// </summary>
+        /// <param name="_worldSpace">If true, returns the radius of this collider in world space - otherwise in local space.</param>
+        /// <returns>The radius of this collider.</returns>
+        public float GetRadius(bool _worldSpace = true) {
+            float _radius = Mathf.Abs(collider.radius);
+
+            if (_worldSpace) {
+                Vector3 _scale = transform.lossyScale;
+
+                switch (collider.direction) {
+                    // X axis.
+                    case 0:
+                        _scale.x = 0f;
+                        break;
+
+                    // Y axis.
+                    case 1:
+                        _scale.y = 0f;
+                        break;
+
+                    // Z axis.
+                    case 2:
+                        _scale.z = 0f;
+                        break;
+
+                    // This never happen.
+                    default:
+                        throw new InvalidCapsuleHeightException();
+                }
+
+                _radius *= _scale.Max();
+            }
+
+            return _radius;
+        }
+
+        /// <summary>
+        /// Get the height of this <see cref="CapsuleCollider"/>.
+        /// </summary>
+        /// <param name="_worldSpace">If true, returns the height of this collider in world space - otherwise in local space.</param>
+        /// <returns>The height of this collider.</returns>
+        public float GetHeight(bool _worldSpace = true) {
+            float _height = Mathf.Abs(collider.height);
+
+            if (_worldSpace) {
+                float _scale;
+
+                switch (collider.direction) {
+                    // X axis.
+                    case 0:
+                        _scale = transform.lossyScale.x;
+                        break;
+
+                    // Y axis.
+                    case 1:
+                        _scale = transform.lossyScale.y;
+                        break;
+
+                    // Z axis.
+                    case 2:
+                        _scale = transform.lossyScale.z;
+                        break;
+
+                    // This never happen.
+                    default:
+                        throw new InvalidCapsuleHeightException();
+                }
+
+                _height *= _scale;
+            }
+
+            return _height;
+        }
         #endregion
     }
 
-    internal class SphereColliderWrapper3D : ColliderWrapper3D {
+    internal sealed class SphereColliderWrapper3D : ColliderWrapper3D {
         #region Global Members
-        public readonly SphereCollider Collider = null;
+        private SphereCollider collider = null;
 
-        // -----------------------
+        public override Collider Collider {
+            get { return collider; }
+            set {
+                if (value is not SphereCollider _sphere)
+                    throw new InvalidColliderException($"Collider must be of type {typeof(SphereCollider).Name}");
+
+                collider = _sphere;
+                transform = collider.transform;
+            }
+        }
+
+        // -------------------------------------------
+        // Constructor(s)
+        // -------------------------------------------
 
         public SphereColliderWrapper3D(SphereCollider _collider) : base(_collider) {
-            Collider = _collider;
+            collider = _collider;
         }
         #endregion
 
@@ -242,31 +468,64 @@ namespace EnhancedFramework.Physics3D {
         public override bool Raycast(Vector3 _direction, out RaycastHit _hit, float _distance, int _mask, QueryTriggerInteraction _triggerInteraction) {
             _direction.Normalize();
 
-            Vector3 _offset = transform.rotation * Vector3.Scale(_direction, GetExtents());
-            return Physics.Raycast(Collider.bounds.center + _offset, _direction, out _hit, _distance, _mask, _triggerInteraction);
+            Vector3 _offset = Vector3.Scale(_direction, GetExtents()).Rotate(transform.rotation);
+            Vector3 _center = GetCenter();
+
+            return Physics.Raycast(_center + _offset, _direction, out _hit, _distance, _mask, _triggerInteraction);
+        }
+
+        public override int RaycastAll(Vector3 _direction, RaycastHit[] _buffer, float _distance, int _mask, QueryTriggerInteraction _triggerInteraction) {
+            _direction.Normalize();
+
+            Vector3 _offset = Vector3.Scale(_direction, GetExtents()).Rotate(transform.rotation);
+            Vector3 _center = GetCenter();
+
+            return Physics.RaycastNonAlloc(_center + _offset, _direction, _buffer, _distance, _mask, _triggerInteraction);
         }
 
         public override int Cast(Vector3 _velocity, RaycastHit[] _buffer, float _distance, int _mask, QueryTriggerInteraction _triggerInteraction) {
-            float _radius = Collider.radius - Physics.defaultContactOffset;
-            return Physics.SphereCastNonAlloc(Collider.bounds.center, _radius, _velocity.normalized, _buffer, _distance, _mask, _triggerInteraction);
+            _velocity.Normalize();
+
+            Vector3 _center = GetCenter();
+            float _radius   = GetRadius(true) - Physics3DUtility.ContactOffset;
+
+            return Physics.SphereCastNonAlloc(_center, _radius, _velocity, _buffer, _distance, _mask, _triggerInteraction);
         }
 
         public override int Overlap(Collider[] _buffer, int _mask, QueryTriggerInteraction _triggerInteraction) {
-            return Physics.OverlapSphereNonAlloc(Collider.bounds.center, Collider.radius, _buffer, _mask, _triggerInteraction);
+            Vector3 _center = GetCenter();
+            float _radius   = GetRadius(true);
+
+            return Physics.OverlapSphereNonAlloc(_center, _radius, _buffer, _mask, _triggerInteraction);
         }
         #endregion
 
         #region Utility
         public override Vector3 GetExtents() {
-            float _radius = Collider.radius;
-            Vector3 _extents = new Vector3(_radius, _radius, _radius);
-
-            return transform.TransformVector(_extents);
+            return GetRadius(true).ToVector3();
         }
 
         public override void SetBounds(Vector3 _center, Vector3 _size) {
-            Collider.center = _center;
-            Collider.radius = _size.x;
+            _center = transform.InverseTransformPoint(_center);
+            _size   = transform.InverseTransformVector(_size);
+
+            collider.center = _center;
+            collider.radius = Mathf.Abs(_size.Max() * .5f);
+        }
+
+        /// <summary>
+        /// Get the radius of this <see cref="SphereCollider"/>.
+        /// </summary>
+        /// <param name="_worldSpace">If true, returns the radius of this collider in world space - otherwise in local space.</param>
+        /// <returns>The radius of this collider.</returns>
+        public float GetRadius(bool _worldSpace = true) {
+            float _radius = Mathf.Abs(collider.radius);
+
+            if (_worldSpace) {
+                _radius *= transform.lossyScale.Max();
+            }
+
+            return _radius;
         }
         #endregion
     }
@@ -276,7 +535,7 @@ namespace EnhancedFramework.Physics3D {
     /// Exception for any non-primitive collider, forbidding
     /// the usage of complex (cast or overlap) physics operations.
     /// </summary>
-    public class NonPrimitiveColliderException : Exception {
+    public sealed class NonPrimitiveColliderException : Exception {
         public NonPrimitiveColliderException() : base() { }
 
         public NonPrimitiveColliderException(string _message) : base(_message) { }
@@ -285,10 +544,21 @@ namespace EnhancedFramework.Physics3D {
     }
 
     /// <summary>
+    /// Exception raised for an invalid type of <see cref="Collider"/>.
+    /// </summary>
+    public sealed class InvalidColliderException : Exception {
+        public InvalidColliderException() : base() { }
+
+        public InvalidColliderException(string message) : base(message) { }
+
+        public InvalidColliderException(string message, Exception innerException) : base(message, innerException) { }
+    }
+
+    /// <summary>
     /// Exception for invalid capsule height axis, making
     /// the associated collider cast or overlap operation impossible.
     /// </summary>
-    public class InvalidCapsuleHeightException : Exception {
+    public sealed class InvalidCapsuleHeightException : Exception {
         public InvalidCapsuleHeightException() : base() { }
 
         public InvalidCapsuleHeightException(string _message) : base(_message) { }

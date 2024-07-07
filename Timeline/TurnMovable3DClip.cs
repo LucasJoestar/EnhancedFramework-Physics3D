@@ -72,7 +72,7 @@ namespace EnhancedFramework.Physics3D.Timeline {
 
                 // Preview origin.
                 if (fromRotation == default) {
-                    fromRotation = Creature.transform.rotation;
+                    fromRotation = Movable.transform.rotation;
                 }
 
                 return;
@@ -80,7 +80,7 @@ namespace EnhancedFramework.Physics3D.Timeline {
             #endif
 
             // Turn.
-            Creature.TurnTo(Forward.forward);
+            Movable.TurnTo(Forward.forward);
         }
 
         public override void ProcessFrame(Playable _playable, FrameData _info, object _playerData) {
@@ -95,7 +95,7 @@ namespace EnhancedFramework.Physics3D.Timeline {
 
                 // Rotation preview.
                 Quaternion _rotation = Quaternion.Lerp(fromRotation, Forward.rotation, GetNormalizedTime(_playable));
-                Creature.SetRotation(_rotation);
+                Movable.SetRotation(_rotation);
 
                 return;
             }
@@ -114,7 +114,7 @@ namespace EnhancedFramework.Physics3D.Timeline {
 
                 // Complete preview.
                 Quaternion _rotation = _completed ? Forward.rotation : fromRotation;
-                Creature.SetRotation(_rotation);
+                Movable.SetRotation(_rotation);
 
                 return;
             }
@@ -123,8 +123,8 @@ namespace EnhancedFramework.Physics3D.Timeline {
             // Complete turn.
             if (CompleteOnExit) {
 
-                Creature.StopTurnTo();
-                Creature.SetRotation(Forward.rotation);
+                Movable.StopTurnTo();
+                Movable.SetRotation(Forward.rotation);
             }
         }
 
@@ -136,7 +136,7 @@ namespace EnhancedFramework.Physics3D.Timeline {
         /// Get if this clip is valid.
         /// </summary>
         public bool IsValid() {
-            return (Creature != null) && (Forward != null);
+            return (Movable != null) && (Forward != null);
         }
         #endregion
     }

@@ -55,7 +55,7 @@ namespace EnhancedFramework.Physics3D.PlayMaker {
     /// </summary>
     [Tooltip("Pops and remove a velocity coefficient from a Movable3D.")]
     [ActionCategory("Movable 3D")]
-    public class Movable3DPopVelocityCoef : BaseMovable3DPopVelocityCoef {
+    public sealed class Movable3DPopVelocityCoef : BaseMovable3DPopVelocityCoef {
         #region Global Members
         // -------------------------------------------
         // Movable
