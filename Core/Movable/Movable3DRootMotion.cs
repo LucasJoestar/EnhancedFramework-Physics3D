@@ -45,7 +45,7 @@ namespace EnhancedFramework.Physics3D {
             }
 
             if (!movable) {
-                movable = GetComponentInParent<Movable3D>();
+                movable = GetComponentInParent<Movable3D>(true);
             }
         }
         #endif
