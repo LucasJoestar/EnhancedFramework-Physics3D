@@ -353,6 +353,11 @@ namespace EnhancedFramework.Physics3D {
         [Tooltip("Additional options used to define this object behaviour")]
         [SerializeField] private MovableOption options = MovableOption.SlideOnSurfaces;
 
+        [Space(10f)]
+
+        [Tooltip("All objects with one of these tags will be treated as exceptions for sliding surfaces - slide on if disabled, or don't if enabled")]
+        [SerializeField] private TagGroup slideSurfaceExceptions = new TagGroup();
+
         [Space(10f), PropertyOrder(10)]
 
         [Tooltip("Sends a log about this object hit Colliders every frame")]
@@ -1521,6 +1526,7 @@ namespace EnhancedFramework.Physics3D {
         /// </summary>
         internal Vector3 ComputeImpact(Vector3 _velocity, CollisionHit3D _hit) {
             RaycastHit _raycastHit = _hit.RaycastHit;
+            Collider _hitCollider  = _raycastHit.collider;
 
             // Security.
             if (Physics3DSettings.I.CheckForNAN && _raycastHit.normal.IsAnyNaN()) {
@@ -1528,7 +1534,13 @@ namespace EnhancedFramework.Physics3D {
                 this.LogErrorMessage("NaN detected => " + _raycastHit.collider.name + " - " + _raycastHit.distance);
             }
 
-            _velocity = _velocity.PerpendicularSurface(_raycastHit.normal, SlideOnSurfaces);
+            // Slide on surfaces option.
+            bool _slide = SlideOnSurfaces;
+            if (_hitCollider.HasAnyTag(slideSurfaceExceptions, false)) {
+                _slide = !_slide;
+            }
+
+            Vector3 newVelocity = _velocity.PerpendicularSurface(_raycastHit.normal, _slide);
             return GetAxisVelocity(_velocity);
         }
         #endregion

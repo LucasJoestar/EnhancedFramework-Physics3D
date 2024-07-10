@@ -54,6 +54,13 @@ namespace EnhancedFramework.Physics3D {
             get { return wrapper.GetExtents(); }
         }
 
+        /// <summary>
+        /// Contact offset of this collider.
+        /// </summary>
+        public float ContactOffset {
+            get { return collider.contactOffset; }
+        }
+
         // -------------------------------------------
         // Constructor(s)
         // -------------------------------------------
@@ -305,7 +312,7 @@ namespace EnhancedFramework.Physics3D {
         public int CastAll(Vector3 _direction, out RaycastHit _hit, float _distance, int _mask, QueryTriggerInteraction _triggerInteraction = CastDefaultQueryTrigger, bool ignoreFurtherHits = true,
                            IList<Collider> _ignoredColliders = null) {
             // Distance security.
-            float _contactOffset = Physics3DUtility.ContactOffset;
+            float _contactOffset = ContactOffset;
             _distance += _contactOffset * 2f;
 
             int _amount = wrapper.Cast(_direction, castBuffer, _distance, _mask, _triggerInteraction);

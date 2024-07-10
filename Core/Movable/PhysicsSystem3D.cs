@@ -53,6 +53,7 @@ namespace EnhancedFramework.Physics3D {
 
         public readonly bool HasHitMovable;
         public float Distance;
+        public bool IsValid;
 
         public readonly Collider HitCollider {
             get { return RaycastHit.collider; }
@@ -63,23 +64,26 @@ namespace EnhancedFramework.Physics3D {
         // -------------------------------------------
 
         /// <inheritdoc cref="CollisionHit3D"/>
-        public CollisionHit3D(float _distance) : this(new RaycastHit() { distance = _distance }, null, false) { }
+        public CollisionHit3D(float _distance) : this(new RaycastHit() { distance = _distance }) { }
 
         /// <inheritdoc cref="CollisionHit3D"/>
-        public CollisionHit3D(RaycastHit _hit) : this(_hit, null, false) { }
+        public CollisionHit3D(RaycastHit _hit) : this(_hit, null, false) {
+            IsValid = false;
+        }
 
         /// <inheritdoc cref="CollisionHit3D"/>
         public CollisionHit3D(RaycastHit _hit, Collider _collider, bool _getMovable = true) {
-            RaycastHit = _hit;
+            RaycastHit     = _hit;
             SourceCollider = _collider;
 
             Distance = _hit.distance;
+            IsValid  = true;
 
             if (_getMovable) {
                 HasHitMovable = _hit.collider.TryGetComponentInParent(out HitMovable);
             } else {
                 HasHitMovable = false;
-                HitMovable = null;
+                HitMovable    = null;
             }
         }
         #endregion
@@ -477,11 +481,15 @@ namespace EnhancedFramework.Physics3D {
 
             // No hit.
             if (_hits.Count == 0) {
-                return new CollisionHit3D() { Distance = _distance };
+                return new CollisionHit3D() {
+                    Distance = _distance,
+                    IsValid  = false,
+                };
             }
 
             _hits.Sort(CollisionHit3D.DistanceComparer);
 
+            float _contactOffset    = Physics3DUtility.ContactOffset;
             float _currentDistance  = _distance;
             bool _isStopped         = false;
             int _maxIndex           = _hits.Count - 1;
@@ -506,6 +514,8 @@ namespace EnhancedFramework.Physics3D {
                     _isStopped = true;
                     _maxIndex = i;
 
+                    _contactOffset = _collisionHit.SourceCollider.contactOffset + _collisionHit.HitCollider.contactOffset;
+
                     break;
                 }
             }
@@ -514,7 +524,7 @@ namespace EnhancedFramework.Physics3D {
             CollisionHit3D _hit = _hits[_maxIndex];
 
             if (_isStopped) {
-                _velocity = _velocity.normalized * Mathf.Max(0f, _hit.Distance - Physics3DUtility.ContactOffset);
+                _velocity = _velocity.normalized * Mathf.Max(0f, _hit.Distance - _contactOffset);
             } else {
                 _hit.Distance = _distance;
             }
@@ -644,7 +654,7 @@ namespace EnhancedFramework.Physics3D {
 
             } else {
 
-                _castVelocity = MoveObject(_rigidbody, _castVelocity, _distance);
+                _castVelocity = MoveObject(_rigidbody, _castVelocity, _mainHit);
             }
 
             ComputeImpacts(_movable, _velocity, _data);
@@ -657,9 +667,18 @@ namespace EnhancedFramework.Physics3D {
 
         /// <param name="_distance">Max distance used to move this object.</param>
         /// <inheritdoc cref="MoveObject(Rigidbody, Vector3)"/>
-        protected static Vector3 MoveObject(Rigidbody _rigidbody, Vector3 _velocity, float _distance) {
+        protected static Vector3 MoveObject(Rigidbody _rigidbody, Vector3 _velocity, CollisionHit3D _hit) {
             // To not stuck the object into another collider, be sure the compute contact offset.
-            if ((_distance -= Physics3DUtility.ContactOffset) > 0f) {
+            float _distance = _hit.Distance;
+            float _offset;
+
+            if (_hit.IsValid) {
+                _offset = _hit.SourceCollider.contactOffset + _hit.HitCollider.contactOffset;
+            } else {
+                _offset = Physics3DUtility.ContactOffset;
+            }
+
+            if ((_distance -= _offset) > 0f) {
                 Vector3 _move = _velocity.normalized * _distance;
 
                 MoveObject(_rigidbody, _move);
@@ -770,7 +789,7 @@ namespace EnhancedFramework.Physics3D {
                 Vector3 _climb  = Vector3.ProjectOnPlane(Vector3.up, _normal).normalized * _movable.ClimbHeight;
 
                 PerformCast(_movable, _rigidbody, _climb, out CollisionHit3D _castHit, _ignoredColliders, false);
-                _climb -= MoveObject(_rigidbody, _climb, _castHit.Distance);
+                _climb -= MoveObject(_rigidbody, _climb, _castHit);
 
                 Vector3 _validCast = Physics3DUtility.ContactOffset * ClimbValidationCastOffsetCoef * -_normal;
 

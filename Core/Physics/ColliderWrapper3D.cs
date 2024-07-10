@@ -27,6 +27,11 @@ namespace EnhancedFramework.Physics3D {
         /// </summary>
         public abstract Collider Collider { get; set; }
 
+        /// <summary>
+        /// Contact offset of this collider.
+        /// </summary>
+        public float ContactOffset { get { return Collider.contactOffset; } }
+
         // -------------------------------------------
         // Constructor(s)
         // -------------------------------------------
@@ -182,7 +187,7 @@ namespace EnhancedFramework.Physics3D {
         public override int Cast(Vector3 _direction, RaycastHit[] _buffer, float _distance, int _mask, QueryTriggerInteraction _triggerInteraction) {
             _direction.Normalize();
 
-            Vector3 _extents = GetExtents() - Physics3DUtility.ContactOffset.ToVector3();
+            Vector3 _extents = GetExtents() - ContactOffset.ToVector3();
             Vector3 _center  = GetCenter();
 
             return Physics.BoxCastNonAlloc(_center, _extents, _direction, _buffer, transform.rotation, _distance, _mask, _triggerInteraction);
@@ -258,7 +263,7 @@ namespace EnhancedFramework.Physics3D {
             collider.transform.position = collider.attachedRigidbody.position;
             _direction.Normalize();
 
-            float _contactOffset = Physics3DUtility.ContactOffset;
+            float _contactOffset = ContactOffset;
             Vector3 _position = collider.ClosestPoint(GetCenter() + (_direction * GetHeight(true))) - (_direction * _contactOffset);
 
             return Physics.Raycast(_position, _direction, out _hit, _distance + _contactOffset, _mask, _triggerInteraction);
@@ -269,7 +274,7 @@ namespace EnhancedFramework.Physics3D {
             collider.transform.position = collider.attachedRigidbody.position;
             _direction.Normalize();
 
-            float _contactOffset = Physics3DUtility.ContactOffset;
+            float _contactOffset = ContactOffset;
             Vector3 _position    = collider.ClosestPoint(GetCenter() + (_direction * GetHeight(true))) - (_direction * _contactOffset);
 
             return Physics.RaycastNonAlloc(_position, _direction, _buffer, _distance, _mask, _triggerInteraction);
@@ -280,7 +285,7 @@ namespace EnhancedFramework.Physics3D {
 
             Vector3 _offset = GetPointOffset();
             Vector3 _center = GetCenter();
-            float _radius   = GetRadius(true) - Physics3DUtility.ContactOffset;
+            float _radius   = GetRadius(true) - ContactOffset;
 
             return Physics.CapsuleCastNonAlloc(_center - _offset, _center + _offset, _radius, _velocity, _buffer, _distance, _mask, _triggerInteraction);
         }
@@ -487,7 +492,7 @@ namespace EnhancedFramework.Physics3D {
             _velocity.Normalize();
 
             Vector3 _center = GetCenter();
-            float _radius   = GetRadius(true) - Physics3DUtility.ContactOffset;
+            float _radius   = GetRadius(true) - ContactOffset;
 
             return Physics.SphereCastNonAlloc(_center, _radius, _velocity, _buffer, _distance, _mask, _triggerInteraction);
         }
