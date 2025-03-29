@@ -178,8 +178,8 @@ namespace EnhancedFramework.Physics3D {
         /// Called when this path is completed.
         /// <para/>
         /// Parameters are: 
-        /// <br/> • A boolean indicating whether the path was fully completed, or prematurely stopped.
-        /// <br/> • The associated <see cref="CreatureMovable3D"/>.
+        /// <br/> â€¢ A boolean indicating whether the path was fully completed, or prematurely stopped.
+        /// <br/> â€¢ The associated <see cref="CreatureMovable3D"/>.
         /// </summary>
         public Action<bool, CreatureMovable3D> OnComplete = null;
 
